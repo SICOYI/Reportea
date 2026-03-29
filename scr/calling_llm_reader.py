@@ -99,6 +99,10 @@ def download_pdf(pdf_urls: list[str], doi: str) -> Path | None:
 
 def extract_text(pdf_path: Path) -> str:
     print(f"\n[3/4] Extracting text from PDF ...")
+    if not pdf_path.exists():
+        print(f"    Skipping: {pdf_path.name} not found.")
+        return ""
+
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
@@ -107,6 +111,8 @@ def extract_text(pdf_path: Path) -> str:
         return text
     except ImportError:
         pass
+    except Exception as e:
+        print(f"    pdfplumber failed ({e}), trying PyPDF2 ...")
 
     try:
         import PyPDF2
@@ -117,7 +123,11 @@ def extract_text(pdf_path: Path) -> str:
         return text
     except ImportError:
         print("    ERROR: Install pdfplumber:  pip install pdfplumber")
-        return ""
+    except Exception as e:
+        print(f"    PyPDF2 failed ({e})")
+
+    print("    Could not extract text — skipping.")
+    return ""
 
 # ── Step 4: Summarize & save .md + .txt ──────────────────────────────────────
 

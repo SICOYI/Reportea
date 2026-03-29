@@ -34,15 +34,19 @@ DOI_PATTERN = re.compile(
 # ── Shared: PDF text ──────────────────────────────────────────────────────────
 
 def extract_pdf_text(pdf_path: Path) -> str:
+    if not pdf_path.exists():
+        print(f"  Skipping {pdf_path.name}: file not found.")
+        return ""
     try:
         import pdfplumber
-        with pdfplumber.open(pdf_path) as pdf:
-            return "\n".join(page.extract_text() or "" for page in pdf.pages)
     except ImportError:
         print("  ERROR: pip install pdfplumber")
         return ""
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            return "\n".join(page.extract_text() or "" for page in pdf.pages)
     except Exception as e:
-        print(f"  Failed to read {pdf_path.name}: {e}")
+        print(f"  Skipping {pdf_path.name}: cannot open PDF ({e})")
         return ""
 
 

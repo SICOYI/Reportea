@@ -1,0 +1,16 @@
+LICENSE
+README.md
+pyproject.toml
+reportea.egg-info/PKG-INFO
+reportea.egg-info/SOURCES.txt
+reportea.egg-info/dependency_links.txt
+reportea.egg-info/entry_points.txt
+reportea.egg-info/requires.txt
+reportea.egg-info/top_level.txt
+scr/__init__.py
+scr/calling_llm_reader.py
+scr/email_sender.py
+scr/extractor.py
+scr/key_words_lib.py
+scr/summarizer.py
+scr/timer.py

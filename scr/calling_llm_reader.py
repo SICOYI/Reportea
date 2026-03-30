@@ -156,6 +156,19 @@ def summarize_and_save(title: str, doi: str, text: str) -> Path:
     print(f"    Markdown : {md_path}")
     return md_path
 
+# ── Local PDF mode ───────────────────────────────────────────────────────────
+
+def process_local_pdf(pdf_path: Path) -> Path | None:
+    """Summarize a local PDF directly — no DOI lookup or download needed."""
+    print(f"\n[local] Processing: {pdf_path.name}")
+    log_session_start(pdf_path.stem)
+    text = extract_text(pdf_path)
+    if not text:
+        print(f"  Skipped: could not extract text from {pdf_path.name}")
+        return None
+    title = pdf_path.stem
+    return summarize_and_save(title, pdf_path.stem, text)
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

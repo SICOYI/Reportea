@@ -44,7 +44,7 @@ python scr/timer.py
 | `scr/timer.py` | Orchestrator — waits for 01:00, runs init + loop, calls summarizer at 04:00 |
 | `scr/extractor.py` | Three extraction classes: `DOIExtractor`, `KeywordExtractor`, `CitationExtractor` |
 | `scr/key_words_lib.py` | Builds keyword library; generates `keywords_list.csv`; compares against library to rank DOIs |
-| `scr/calling_llm_reader.py` | DOI → PDF search → download → text extraction → Claude summary → `.md` |
+| `scr/calling_llm_reader.py` | DOI → PDF search → download → text extraction → Claude summary → `.md`; also accepts a local PDF path directly via `process_local_pdf()` |
 | `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest |
 
 ---
@@ -61,13 +61,30 @@ python scr/timer.py
 
 ## Usage
 
-### Run overnight (recommended)
+### Overnight mode (scheduled)
 
 ```bash
 python scr/timer.py
 ```
 
-Starts watching the clock and triggers automatically at 01:00 AM. If already between 01:00–04:00, starts immediately.
+Waits until 01:00 AM, then runs until 04:00 AM and generates the daily digest.
+
+### Immediate mode
+
+```bash
+python scr/timer.py --now        # start now, run for 1 hour
+python scr/timer.py --now 2      # start now, run for 2 hours
+```
+
+Skips the 01:00 wait and runs for the specified number of hours, then generates the digest.
+
+### Local mode
+
+```bash
+python scr/timer.py --local
+```
+
+Skips all DOI lookup and citation discovery. Reads every PDF already in `base_papers/` directly, generates a structured summary for each one, then produces the daily digest. Useful for quickly summarising a personal collection without running the full overnight pipeline.
 
 ### Run individual modules manually
 
@@ -122,6 +139,16 @@ python scr/summarizer.py
 💡 What This Means
 🔭 On the Horizon
 ```
+
+---
+
+## Known Issues
+
+| # | Description | Impact |
+|---|---|---|
+| 1 | Papers without author-defined keywords cannot be processed — `KeywordExtractor` returns an empty set, causing the paper to be skipped in library building and CSV comparison | Base papers with no keyword section produce an empty library; citation papers with no keywords are excluded from ranking |
+| 2 | Papers without a DOI cannot be processed — `DOIExtractor` relies on finding a DOI string in the PDF text; if none is present the paper yields no DOI and is skipped entirely | Base papers without a DOI contribute no entry point into the discovery pipeline |
+| 3 | DOIs in reference lists that span multiple lines are truncated at the line break during PDF text extraction — the partial DOI fails `doi.org` validation and is discarded | Citation discovery rate can be very low for PDFs with wrapped reference formatting, reducing the number of related papers found per loop iteration |
 
 ---
 

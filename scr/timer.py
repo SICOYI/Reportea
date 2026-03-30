@@ -43,6 +43,7 @@ from calling_llm_reader import (
     extract_text,
     summarize_and_save,
     log_session_start,
+    process_local_pdf,
 )
 from summarizer import generate_daily_report
 
@@ -150,22 +151,49 @@ def run(deadline: datetime):
     generate_daily_report()
     print("\n[timer] All done.")
 
+# ── Local mode ────────────────────────────────────────────────────────────────
+
+def run_local():
+    """Process every PDF in base_papers/ directly, then generate the daily report."""
+    pdfs = sorted(BASE_PAPERS_DIR.glob("*.pdf"))
+    if not pdfs:
+        print("[timer] No PDFs found in base_papers/ — nothing to process.")
+        return
+
+    print(f"[timer] Local mode — processing {len(pdfs)} PDF(s) from base_papers/ ...")
+    for i, pdf in enumerate(pdfs, 1):
+        print(f"\n  [{i}/{len(pdfs)}] {pdf.name}")
+        try:
+            process_local_pdf(pdf)
+        except Exception as e:
+            print(f"  [ERROR] {pdf.name}: {e}")
+
+    print(f"\n[timer] Done processing. Generating daily report ...")
+    generate_daily_report()
+    print("\n[timer] All done.")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Reportea pipeline orchestrator")
     parser.add_argument(
         "--now", metavar="HOURS", nargs="?", const=1, type=float,
         help="Start immediately and run for HOURS hours (default 1). Skips the 01:00 wait."
     )
+    parser.add_argument(
+        "--local", action="store_true",
+        help="Summarize all PDFs in base_papers/ directly, then generate the daily report."
+    )
     args = parser.parse_args()
 
     try:
-        if args.now is not None:
+        if args.local:
+            run_local()
+        elif args.now is not None:
             deadline = now() + timedelta(hours=args.now)
             print(f"[timer] Immediate mode — running for {args.now}h until {deadline.strftime('%H:%M:%S')}")
+            run(deadline)
         else:
             wait_until_start()
             deadline = now().replace(hour=4, minute=0, second=0, microsecond=0)
-
-        run(deadline)
+            run(deadline)
     except KeyboardInterrupt:
         print("\n[timer] Interrupted by user.")

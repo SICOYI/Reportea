@@ -11,7 +11,7 @@ import csv
 import subprocess
 from pathlib import Path
 
-from extractor import KeywordExtractor, CitationExtractor
+from extractor import extract_pdf_text, KeywordExtractor, CitationExtractor
 
 CLAUDE_BIN = "/Users/mac/.vscode/extensions/anthropic.claude-code-2.1.87-darwin-x64/resources/native-binary/claude"
 

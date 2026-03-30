@@ -22,6 +22,7 @@ Schedule:
   04:00  Generate daily digest via summarizer
 """
 
+import argparse
 import sys
 import time
 from datetime import datetime, timedelta
@@ -49,17 +50,15 @@ ROOT            = Path(__file__).parent.parent
 BASE_PAPERS_DIR = ROOT / "base_papers"
 CACHE_DIR       = ROOT / "pdf_cache"
 
-START_HOUR = 1    # 01:00
-END_HOUR   = 4    # 04:00
-TOP_N      = 10
+TOP_N = 10
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def now() -> datetime:
     return datetime.now()
 
-def is_within_window() -> bool:
-    return START_HOUR <= now().hour < END_HOUR
+def is_within_window(deadline: datetime) -> bool:
+    return now() < deadline
 
 def seconds_until(hour: int) -> float:
     target = now().replace(hour=hour, minute=0, second=0, microsecond=0)
@@ -68,10 +67,7 @@ def seconds_until(hour: int) -> float:
     return (target - now()).total_seconds()
 
 def wait_until_start():
-    if is_within_window():
-        print(f"[timer] Already within window ({now().strftime('%H:%M')}). Starting now.")
-        return
-    secs = seconds_until(START_HOUR)
+    secs = seconds_until(1)
     wake = now() + timedelta(seconds=secs)
     print(f"[timer] Waiting until {wake.strftime('%Y-%m-%d %H:%M')} to start ... ({secs/3600:.1f}h)")
     time.sleep(secs)
@@ -89,15 +85,15 @@ def delete_csv():
 
 # ── Process a list of DOIs ────────────────────────────────────────────────────
 
-def process_dois(dois: list[str]):
+def process_dois(dois: list[str], deadline: datetime):
     if not dois:
         print("[timer] No DOIs to process.")
         return
 
     print(f"\n[timer] Processing {len(dois)} DOI(s) ...")
     for i, doi in enumerate(dois, 1):
-        if not is_within_window():
-            print(f"\n[timer] Past {END_HOUR}:00 — stopping early.")
+        if not is_within_window(deadline):
+            print(f"\n[timer] Deadline reached — stopping early.")
             return
         print(f"\n  [{i}/{len(dois)}] {doi}")
         try:
@@ -113,9 +109,8 @@ def process_dois(dois: list[str]):
 
 # ── Main flow ─────────────────────────────────────────────────────────────────
 
-def run():
-    wait_until_start()
-    print(f"\n[timer] Session started at {now().strftime('%H:%M:%S')}")
+def run(deadline: datetime):
+    print(f"\n[timer] Session started at {now().strftime('%H:%M:%S')} — deadline {deadline.strftime('%H:%M:%S')}")
 
     # ── Build keyword library (from base_papers/) ────────────────────────────
     _, all_kws = build_keywords_library()
@@ -126,7 +121,7 @@ def run():
     # ── Initialization: process base papers ──────────────────────────────────
     print("\n[timer] Init — processing base papers ...")
     base_dois = DOIExtractor.get_dois_from_base_papers()
-    process_dois(base_dois)
+    process_dois(base_dois, deadline)
     clear_pdf_cache()
 
     # Build initial CSV from base_papers/ citations, get first batch of DOIs
@@ -137,10 +132,10 @@ def run():
 
     # ── Loop: discover → process → discover ... ───────────────────────────────
     iteration = 1
-    while is_within_window() and related_dois:
+    while is_within_window(deadline) and related_dois:
         print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_dois)} DOI(s)")
 
-        process_dois(related_dois)
+        process_dois(related_dois, deadline)
 
         generate_citations_csv(CACHE_DIR, CSV_PATH)
         results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
@@ -156,7 +151,21 @@ def run():
     print("\n[timer] All done.")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Reportea pipeline orchestrator")
+    parser.add_argument(
+        "--now", metavar="HOURS", nargs="?", const=1, type=float,
+        help="Start immediately and run for HOURS hours (default 1). Skips the 01:00 wait."
+    )
+    args = parser.parse_args()
+
     try:
-        run()
+        if args.now is not None:
+            deadline = now() + timedelta(hours=args.now)
+            print(f"[timer] Immediate mode — running for {args.now}h until {deadline.strftime('%H:%M:%S')}")
+        else:
+            wait_until_start()
+            deadline = now().replace(hour=4, minute=0, second=0, microsecond=0)
+
+        run(deadline)
     except KeyboardInterrupt:
         print("\n[timer] Interrupted by user.")

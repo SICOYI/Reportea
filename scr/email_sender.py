@@ -39,6 +39,8 @@ def send_report(subject: str, body: str, recipient: str = ""):
     try:
         for i, chunk in enumerate(chunks, 1):
             title = subject if len(chunks) == 1 else f"{subject} ({i}/{len(chunks)})"
+            # HTTP headers must be ASCII; replace non-ASCII chars with closest equivalent
+            title = title.encode("ascii", errors="replace").decode("ascii")
             r = requests.post(
                 NTFY_URL,
                 data=chunk,

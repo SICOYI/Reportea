@@ -45,7 +45,8 @@ python scr/timer.py
 | `scr/extractor.py` | Three extraction classes: `DOIExtractor`, `KeywordExtractor`, `CitationExtractor` |
 | `scr/key_words_lib.py` | Builds keyword library; generates `keywords_list.csv`; compares against library to rank DOIs |
 | `scr/calling_llm_reader.py` | DOI → PDF search → download → text extraction → Claude summary → `.md`; also accepts a local PDF path directly via `process_local_pdf()` |
-| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest |
+| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest; pushes it to your phone via ntfy.sh |
+| `scr/email_sender.py` | ntfy.sh push notification client — sends the daily report to a subscribed topic |
 
 ---
 
@@ -109,6 +110,8 @@ python scr/summarizer.py
    ```bash
    pip install requests pdfplumber
    ```
+
+3. **Phone notifications (optional)** — install the [ntfy app](https://ntfy.sh) on your phone, subscribe to your chosen topic, then set `TOPIC` in `scr/email_sender.py`. The daily report will be pushed automatically after each run.
 
 3. **Claude binary** — requires the Claude Code VS Code extension. If you see `FileNotFoundError`:
    ```bash

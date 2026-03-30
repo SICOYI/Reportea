@@ -50,7 +50,7 @@ def generate_daily_report() -> Path | None:
         f"Today is {today_display}. "
         "Below are structured summaries of several academic papers published or reviewed today. "
         "Write a daily tech report in Markdown, styled like a newspaper front page, "
-        "STRICTLY under 500 words total. Use this exact structure:\n\n"
+        "STRICTLY under 1500 words total. Use this exact structure:\n\n"
         "---\n"
         "# 📰 Tech & Research Daily\n"
         f"### {today_display}\n"

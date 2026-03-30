@@ -45,8 +45,8 @@ python scr/timer.py
 | `scr/extractor.py` | Three extraction classes: `DOIExtractor`, `KeywordExtractor`, `CitationExtractor` |
 | `scr/key_words_lib.py` | Builds keyword library; generates `keywords_list.csv`; compares against library to rank DOIs |
 | `scr/calling_llm_reader.py` | DOI → PDF search → download → text extraction → Claude summary → `.md`; also accepts a local PDF path directly via `process_local_pdf()` |
-| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest; pushes it to your phone via ntfy.sh |
-| `scr/email_sender.py` | ntfy.sh push notification client — sends the daily report to a subscribed topic |
+| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest; pushes it to your iPhone via Bark |
+| `scr/email_sender.py` | Bark push notification client — sends the daily report to your iPhone |
 
 ---
 
@@ -111,7 +111,7 @@ python scr/summarizer.py
    pip install requests pdfplumber
    ```
 
-3. **Phone notifications (optional)** — install the [ntfy app](https://ntfy.sh) on your phone, subscribe to your chosen topic, then set `TOPIC` in `scr/email_sender.py`. The daily report will be pushed automatically after each run.
+3. **iPhone notifications (optional)** — install [Bark](https://apps.apple.com/app/bark-customed-notifications/id1403753865) from the App Store. Open it to get your device key, then set `BARK_KEY` in `scr/email_sender.py`. The daily report will be pushed automatically after each run and saved in Bark's history.
 
 4. **Claude binary** — requires the Claude Code VS Code extension. If you see `FileNotFoundError`:
    ```bash

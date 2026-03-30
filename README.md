@@ -169,8 +169,7 @@ Reportea/
 │   ├── key_words_lib.py      # Keyword library + CSV generation + comparison
 │   ├── calling_llm_reader.py # DOI → PDF → summary; or local PDF → summary
 │   ├── summarizer.py         # Daily tech digest generator
-│   └── email_sender.py       # ntfy.sh push notification client
+│   └── email_sender.py       # Bark push notification client
 ├── keywords_list.csv         # Transient (created/deleted each cycle)
-├── claude_responses.log      # Full interaction log
-└── .token_cache.json         # (not created — ntfy needs no auth)
+└── claude_responses.log      # Full interaction log
 ```

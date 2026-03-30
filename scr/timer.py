@@ -30,13 +30,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from extractor import DOIExtractor
+from extractor import DOIExtractor, TitleExtractor
 from key_words_lib import (
     build_keywords_library,
     generate_citations_csv,
+    generate_citations_csv_titles,
     compare_csv_with_library,
     CSV_PATH,
 )
+from browser import find_and_download_pdf
 from calling_llm_reader import (
     get_pdf_links,
     download_pdf,
@@ -108,6 +110,29 @@ def process_dois(dois: list[str], deadline: datetime):
         except Exception as e:
             print(f"  [ERROR] {doi}: {e}")
 
+# ── Process a list of titles (title-based fallback) ───────────────────────────
+
+def process_titles(titles: list[str], deadline: datetime):
+    if not titles:
+        print("[timer] No titles to process.")
+        return
+
+    print(f"\n[timer] Processing {len(titles)} title(s) via browser ...")
+    for i, title in enumerate(titles, 1):
+        if not is_within_window(deadline):
+            print(f"\n[timer] Deadline reached — stopping early.")
+            return
+        print(f"\n  [{i}/{len(titles)}] {title}")
+        try:
+            log_session_start(title)
+            pdf_path = find_and_download_pdf(title)
+            if pdf_path:
+                text = extract_text(pdf_path)
+                if text:
+                    summarize_and_save(title, title, text)
+        except Exception as e:
+            print(f"  [ERROR] {title}: {e}")
+
 # ── Main flow ─────────────────────────────────────────────────────────────────
 
 def run(deadline: datetime):
@@ -122,25 +147,47 @@ def run(deadline: datetime):
     # ── Initialization: process base papers ──────────────────────────────────
     print("\n[timer] Init — processing base papers ...")
     base_dois = DOIExtractor.get_dois_from_base_papers()
-    process_dois(base_dois, deadline)
-    clear_pdf_cache()
 
-    # Build initial CSV from base_papers/ citations, get first batch of DOIs
-    generate_citations_csv(BASE_PAPERS_DIR, CSV_PATH)
+    if base_dois:
+        use_title_mode = False
+        process_dois(base_dois, deadline)
+        clear_pdf_cache()
+        n = generate_citations_csv(BASE_PAPERS_DIR, CSV_PATH)
+        if n == 0:
+            print("[timer] No citation DOIs found — falling back to title-based citation discovery.")
+            use_title_mode = True
+            generate_citations_csv_titles(BASE_PAPERS_DIR, CSV_PATH)
+    else:
+        use_title_mode = True
+        print("[timer] No DOIs found — switching to title-based mode.")
+        base_titles = TitleExtractor.extract_titles_from_dir(BASE_PAPERS_DIR)
+        process_titles(base_titles, deadline)
+        clear_pdf_cache()
+        generate_citations_csv_titles(BASE_PAPERS_DIR, CSV_PATH)
+
     results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
-    related_dois = [doi for doi, _, _ in results]
+    related_items = [item for item, _, _ in results]
     delete_csv()
 
     # ── Loop: discover → process → discover ... ───────────────────────────────
     iteration = 1
-    while is_within_window(deadline) and related_dois:
-        print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_dois)} DOI(s)")
+    while is_within_window(deadline) and related_items:
+        mode_label = "title(s)" if use_title_mode else "DOI(s)"
+        print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_items)} {mode_label}")
 
-        process_dois(related_dois, deadline)
+        if use_title_mode:
+            process_titles(related_items, deadline)
+            generate_citations_csv_titles(CACHE_DIR, CSV_PATH)
+        else:
+            process_dois(related_items, deadline)
+            n = generate_citations_csv(CACHE_DIR, CSV_PATH)
+            if n == 0:
+                print("[timer] No citation DOIs found — falling back to title-based citation discovery.")
+                use_title_mode = True
+                generate_citations_csv_titles(CACHE_DIR, CSV_PATH)
 
-        generate_citations_csv(CACHE_DIR, CSV_PATH)
         results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
-        related_dois = [doi for doi, _, _ in results]
+        related_items = [item for item, _, _ in results]
 
         clear_pdf_cache()
         delete_csv()

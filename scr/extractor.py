@@ -1,7 +1,7 @@
 """
 extractor.py
 
-Three extraction modules in one file:
+Four extraction modules in one file:
 
   Module 1 — DOIExtractor
       Extract a paper's own DOI from PDFs in base_papers/
@@ -11,6 +11,9 @@ Three extraction modules in one file:
 
   Module 3 — CitationExtractor
       Extract cited DOIs from a PDF's references, validate via doi.org, cache to doi_cache/
+
+  Module 4 — TitleExtractor
+      Extract a paper's own title, and cited paper titles from the references section
 """
 
 import re
@@ -169,3 +172,54 @@ class CitationExtractor:
         for f in sorted(DOI_CACHE_DIR.glob("*_cited_dois.json")):
             all_dois.extend(json.loads(f.read_text(encoding="utf-8")))
         return list(dict.fromkeys(all_dois))
+
+
+# ════════════════════════════════════════════════════════════
+# Module 4 — TitleExtractor
+# ════════════════════════════════════════════════════════════
+
+class TitleExtractor:
+    """Extract a paper's own title and cited paper titles from the references section."""
+
+    @staticmethod
+    def extract_title(pdf_path: Path) -> str:
+        """Extract the paper's own title from the first ~2000 chars via Claude."""
+        text = extract_pdf_text(pdf_path)
+        if not text:
+            return pdf_path.stem
+        result = subprocess.run(
+            [CLAUDE_BIN, "-p",
+             "Extract the title of this academic paper. "
+             "Return ONLY the title, nothing else.\n\n" + text[:2000]],
+            capture_output=True, text=True
+        )
+        title = result.stdout.strip()
+        return title if title else pdf_path.stem
+
+    @classmethod
+    def extract_titles_from_dir(cls, source_dir: Path) -> list[str]:
+        """Extract titles from all PDFs in source_dir."""
+        titles: list[str] = []
+        for pdf in sorted(source_dir.glob("*.pdf")):
+            title = cls.extract_title(pdf)
+            print(f"  {pdf.name} → {title}")
+            titles.append(title)
+        return titles
+
+    @staticmethod
+    def extract_citation_titles(pdf_path: Path) -> list[str]:
+        """Extract cited paper titles from the references section via Claude."""
+        text = extract_pdf_text(pdf_path)
+        if not text:
+            return []
+        ref_match = re.search(r'(?i)\breferences\b', text)
+        section = text[ref_match.start():] if ref_match else text[-4000:]
+        result = subprocess.run(
+            [CLAUDE_BIN, "-p",
+             "Extract all cited paper titles from this references section. "
+             "Return ONLY a newline-separated list of titles, nothing else.\n\n" + section[:6000]],
+            capture_output=True, text=True
+        )
+        titles = [t.strip() for t in result.stdout.strip().splitlines() if t.strip()]
+        print(f"  {pdf_path.name} → {len(titles)} citation titles extracted")
+        return titles

@@ -70,9 +70,9 @@ def get_pdf_links(doi: str) -> tuple[str, list[str]]:
 
 # ── Step 2: Download & cache PDF ─────────────────────────────────────────────
 
-def download_pdf(pdf_urls: list[str], doi: str) -> Path | None:
-    CACHE_DIR.mkdir(exist_ok=True)
-    dest = CACHE_DIR / f"{safe_doi(doi)}.pdf"
+def download_pdf(pdf_urls: list[str], doi: str, cache_dir: Path = CACHE_DIR) -> Path | None:
+    cache_dir.mkdir(exist_ok=True)
+    dest = cache_dir / f"{safe_doi(doi)}.pdf"
 
     if dest.exists():
         print(f"\n[2/4] PDF already cached: {dest}")

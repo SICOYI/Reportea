@@ -1657,3 +1657,311 @@ PreCorrector advances GNN-based preconditioner design by anchoring learning to c
 SESSION START  2026-03-30T09:35:25.089440
 DOI: 3727874
 ============================================================
+
+============================================================
+SESSION START  2026-03-30T17:12:28.761064
+DOI: 10.1145/3727874
+============================================================
+[2026-03-30T17:13:47.058422] STEP 1 - PDF search
+**Paper Title:** Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+*Gilles Daviet, Tianchang Shen, Nicholas Sharp, David I. W. Levin — ACM Transactions on Graphics (SIGGRAPH 2025)*
+
+---
+
+**Freely available PDF URLs:**
+
+PDF_URL: https://arxiv.org/pdf/2410.09417
+
+PDF_URL: https://research.nvidia.com/labs/toronto-ai/flexisim/assets/paper.pdf
+
+---
+
+**Notes:**
+- The ACM publisher page is paywalled (403).
+- Unpaywall had not yet indexed this paper (published April 2025).
+- Both URLs above were confirmed to serve real PDF content.
+------------------------------------------------------------
+[2026-03-30T17:15:15.197781] STEP 4 - Summary
+## Title
+Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+## Authors
+- Gilles Daviet — NVIDIA, France
+- Tianchang Shen — NVIDIA, Canada
+- Nicholas Sharp — NVIDIA, USA
+- David I.W. Levin — NVIDIA, Canada
+
+## Abstract
+The paper presents an elastic simulator for domains defined as evolving implicit functions. The simulator is efficient, robust, and fully differentiable with respect to both shape and material parameters. A small neural network is trained to fit quadrature points for numerical integration on implicit grid cells. Combined with a Mixed Finite Element (FEM) formulation, this yields a smooth, differentiable simulation model connecting implicit surface evolution to elastic response.
+
+## Keywords
+- Differentiable simulation
+- Numerical integration
+- Topology optimization
+- Shape reconstruction
+- Finite element methods
+- Neural networks
+
+## Research Problem
+- Geometry recovered from images (as implicit functions) is rapidly evolving and can degenerate during reconstruction
+- Material stiffness can vary by up to four orders of magnitude during optimization
+- Existing methods cannot simultaneously optimize shape, topology, and material properties
+- Fixed quadrature points introduce non-smoothness and ill-conditioning as surfaces evolve
+- Conforming mesh FEM requires high resolution and costly remeshing for complex evolving geometries
+
+## Methodology
+- **Grid-based discretization**: Geometry represented as an implicit function on a regular grid
+- **Neural quadrature**: A small, per-element neural network learns quadrature point locations and weights as a function of the implicit shape, allowing smooth evolution alongside the geometry
+- **Mixed FEM formulation**: Uses a rotation-aware mixed-variational elasticity approach (based on Trusty et al. [2022]) supporting high-order basis functions; prevents performance degradation under wildly varying material properties
+- **Dynamic and quasi-static simulation**: Solves a minimization of a time-discretized incremental potential
+- **Integration with FlexiCubes**: Combined with the FlexiCubes reconstruction algorithm to enable physics-aware geometry reconstruction from images
+
+## Key Findings
+- Neural quadrature produces smooth, differentiable integration over evolving implicit domains, unlike fixed quadrature (Clip/Full) which produces discontinuous jumps
+- The mixed FEM formulation maintains stability independent of material stiffness magnitude
+- The system can simulate thin, sub-grid geometric features accurately
+- Each component (mixed FEM + neural quadrature) is individually necessary for stable, robust results
+- The method successfully performs image-guided material, shape, and topology optimization via differentiable rendering
+
+## Contributions
+1. **Neural quadrature scheme**: First application of per-element neural networks to learn quadrature points for integration over implicitly-defined domains
+2. **Differentiable elasticity solver**: End-to-end differentiable with respect to both geometry and material parameters
+3. **High-order mixed FEM on implicit grids**: Supports high-order elements without remeshing, robust to extreme material parameter variation
+4. **Novel applications**: Enables image-guided topology optimization, material identification, and shape optimization in a unified framework
+
+## Limitations
+- Requires training a neural network per element, adding overhead compared to classical quadrature
+- The paper is truncated in the provided text, so additional limitations discussed in later sections are not available
+- Relies on a regular grid discretization, which may not be optimal for all geometries
+- Integration with reconstruction (FlexiCubes) may inherit limitations of that representation
+
+## Conclusion
+The proposed neurally integrated FEM solver addresses a critical gap at the intersection of geometry reconstruction and physical simulation. By replacing fixed quadrature with a learned, smooth neural alternative and coupling it with a mixed FEM formulation, the method achieves robust, differentiable elasticity simulation on evolving implicit domains. This enables novel applications such as physics-constrained 3D reconstruction from images, simultaneous shape/topology/material optimization, and real-time editing with physical feedback — without requiring remeshing or strong shape priors.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T17:15:15.198716
+DOI: 10.1002/pamm.202200306
+============================================================
+[2026-03-30T17:16:03.991120] STEP 1 - PDF search
+**Paper title:** Graph Neural Network enhanced Finite Element modelling
+
+**PDF URLs found:**
+
+PDF_URL: https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/pamm.202200306
+
+The paper is published in *PAMM – Proceedings in Applied Mathematics and Mechanics* (Wiley) under a hybrid open access CC BY-NC-ND license. The Wiley direct PDF link was confirmed via the Semantic Scholar API. No additional copies were found on ResearchGate or a preprint server.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T17:16:04.505980
+DOI: 10.1093/jcde/qwad025
+============================================================
+[2026-03-30T17:17:05.660472] STEP 1 - PDF search
+**Paper Title:** "An finite element analysis surrogate model with boundary oriented graph embedding approach for rapid design"
+
+*Authors:* Xingyu Fu, Fengfeng Zhou, Dheeraj Peddireddy, Zhengyang Kang, Martin Byung-Guk Jun, Vaneet Aggarwal
+*Journal:* Journal of Computational Design and Engineering, Vol. 10, No. 3, June 2023, pp. 1026–1046
+
+---
+
+**Direct PDF URLs found:**
+
+PDF_URL: https://academic.oup.com/jcde/article-pdf/10/3/1026/52601055/qwad025.pdf
+PDF_URL: https://academic.oup.com/jcde/advance-article-pdf/doi/10.1093/jcde/qwad025/49633272/qwad025.pdf
+
+---
+
+**Notes:**
+- The paper is **gold open access** (CC-BY license) via Oxford University Press, so the publisher PDF is freely available.
+- Both URLs point to OUP-hosted PDFs (confirmed via Semantic Scholar and the publisher page).
+- ResearchGate has a listing but no confirmed direct PDF URL could be retrieved (403 response).
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T17:17:06.644141
+DOI: 10.3390/s21186046
+============================================================
+[2026-03-30T17:17:59.764670] STEP 1 - PDF search
+**Paper Title:** Synthetic Image Generation Using the Finite Element Method and Blender Graphics Program for Modeling of Vision-Based Measurement Systems
+
+Published in *Sensors* (MDPI), Vol. 21, Issue 18, Article 6046, September 2021. Gold Open Access (CC-BY).
+
+---
+
+**Direct PDF URLs found:**
+
+PDF_URL: https://www.mdpi.com/1424-8220/21/18/6046/pdf?version=1631260135
+
+---
+
+This is an MDPI journal article (open access), so the PDF is freely available directly from the publisher. The same URL was confirmed by both Unpaywall and Semantic Scholar.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T17:56:55.739601
+DOI: 10.1145/3727874
+============================================================
+[2026-03-30T17:57:52.404461] STEP 1 - PDF search
+**Paper Title:** Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+**Free PDF URLs found:**
+
+PDF_URL: https://arxiv.org/pdf/2410.09417
+
+---
+
+**Notes:**
+- Unpaywall returned HTTP 422 (no data).
+- ACM DL (publisher page) returned HTTP 403 (paywalled).
+- Semantic Scholar confirmed the ArXiv preprint but had no `openAccessPdf` link — the ArXiv URL was derived from the ArXiv ID (`2410.09417`) returned in the paper metadata.
+- No PDF was found on ResearchGate (not fetched directly, but no indication of one from other sources).
+------------------------------------------------------------
+[2026-03-30T17:59:20.134627] STEP 4 - Summary
+## Title
+Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+## Authors
+- Gilles Daviet (NVIDIA, France)
+- Tianchang Shen (NVIDIA, Canada)
+- Nicholas Sharp (NVIDIA, USA)
+- David I.W. Levin (NVIDIA, Canada)
+
+## Abstract
+The paper presents an elastic simulator for domains defined as evolving implicit functions. The simulator is efficient, robust, and fully differentiable with respect to both shape and material parameters. The core innovation is a small neural network trained to fit quadrature points for robust numerical integration on implicit grid cells. Combined with a Mixed Finite Element (FEM) formulation, this yields a smooth, differentiable simulation model linking implicit surface evolution to elastic response.
+
+## Keywords
+- Differentiable simulation
+- Numerical integration
+- Topology optimization
+- Shape reconstruction
+- Implicit functions
+- Finite element methods
+
+## Research Problem
+- 3D geometry reconstruction from images produces rapidly evolving implicit surfaces that are difficult to simulate physically
+- Existing FEM methods require high-resolution conforming meshes or expensive remeshing as geometry evolves
+- Fixed quadrature points introduce non-smoothness and ill-conditioning as surfaces move past them
+- No prior method jointly optimizes geometry, topology, and material properties simultaneously in a differentiable manner
+
+## Methodology
+- **Representation:** Geometry encoded as implicit functions on a regular grid
+- **FEM Formulation:** Mixed finite element method (mixed-variational approach) supporting high-order basis functions; prevents performance degradation under wildly varying material properties
+- **Neural Quadrature:** Per-element neural networks learn quadrature point locations and weights as a function of the underlying implicit shape, enabling smooth evolution of integration points alongside the geometry
+- **Integration:** Combined with FlexiCubes reconstruction algorithm for end-to-end differentiable shape and physics optimization
+- **Optimization targets:** Shape, topology, and material parameters are all treated as differentiable variables
+
+## Key Findings
+- Neural quadrature produces smoother, more stable integration than fixed-point (Full or Clip) quadrature schemes as boundaries evolve
+- The mixed FEM formulation maintains simulation stability across material stiffness variations spanning up to four orders of magnitude
+- The method can simulate sub-grid thin features without requiring mesh resolution commensurate with feature size
+- End-to-end differentiability enables image-guided material, shape, and topology optimization in a single pipeline
+
+## Contributions
+1. **Neural quadrature scheme** — a learned, per-element integration rule that evolves smoothly with implicit geometry
+2. **High-order mixed FEM on implicit domains** — robust to stiffness variation, no remeshing required
+3. **Fully differentiable pipeline** — gradients flow through geometry, quadrature, and material simultaneously
+4. **Novel applications** — image-guided topology optimization and physics-based shape reconstruction demonstrated without a shape prior
+
+## Limitations
+- The paper text is truncated, but implied limitations include:
+  - Neural quadrature requires per-element network training, adding computational overhead compared to analytic schemes
+  - The approach is validated on elastic (quasi-static/dynamic) deformation; extension to other physics (plasticity, fracture) is not addressed
+  - Relies on implicit function representations, which may not suit all downstream workflows requiring explicit mesh output
+
+## Conclusion
+The proposed neurally integrated FEM solver addresses a critical gap between geometry reconstruction and physical simulation by making the integration scheme itself differentiable and adaptive to evolving implicit domains. By combining neural quadrature with a mixed FEM formulation, the method achieves robust, accurate elasticity simulation that is fully differentiable with respect to shape and material — enabling a new class of physics-informed reconstruction and optimization applications.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T17:59:20.135837
+DOI: 10.1002/pamm.202200306
+============================================================
+[2026-03-30T18:00:10.645618] STEP 1 - PDF search
+Here are the results:
+
+**1. Paper Title:**
+Graph Neural Network enhanced Finite Element modelling
+*(Gulakala, R., Markert, B., & Stoffel, M. — PAMM, 2023)*
+
+---
+
+**2. Free PDF URLs found:**
+
+The paper is **open access** (CC BY-NC-ND). Unpaywall/OaDOI redirects directly to the publisher PDF, confirming free availability.
+
+PDF_URL: https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/pamm.202200306
+PDF_URL: https://onlinelibrary.wiley.com/doi/pdf/10.1002/pamm.202200306
+PDF_URL: https://onlinelibrary.wiley.com/doi/epdf/10.1002/pamm.202200306
+
+---
+
+**Notes by source:**
+- **Unpaywall / OaDOI** — redirects directly to the `pdfdirect` Wiley URL above (confirmed open access)
+- **Semantic Scholar** — reports `openAccessPdf` pointing to the same `pdfdirect` URL
+- **Wiley Online Library (publisher)** — all three URL variants above are live; `pdfdirect` is the raw PDF, `epdf` is the embedded reader version
+- **ResearchGate** — lists the paper but returned 403; no direct PDF URL confirmed there
+
+Sources:
+- [Graph Neural Network enhanced Finite Element modelling — Wiley Online Library](https://onlinelibrary.wiley.com/doi/10.1002/pamm.202200306)
+- [Semantic Scholar API](https://api.semanticscholar.org/graph/v1/paper/DOI:10.1002/pamm.202200306?fields=title,openAccessPdf,externalIds)
+- [ResearchGate listing](https://www.researchgate.net/publication/369518682_Graph_Neural_Network_enhanced_Finite_Element_modelling)
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T18:00:12.101452
+DOI: 10.1093/jcde/qwad025
+============================================================
+[2026-03-30T18:01:19.402748] STEP 1 - PDF search
+**Paper Title:**
+"An finite element analysis surrogate model with boundary oriented graph embedding approach for rapid design"
+
+*Authors:* Xingyu Fu, Fengfeng Zhou, Dheeraj Peddireddy, Zhengyang Kang, Martin Byung-Guk Jun, Vaneet Aggarwal
+*Journal:* Journal of Computational Design and Engineering, Vol. 10, Issue 3, June 2023, pp. 1026–1046
+
+---
+
+**Free PDF URLs found:**
+
+PDF_URL: https://academic.oup.com/jcde/article-pdf/10/3/1026/50297139/qwad025.pdf
+PDF_URL: https://academic.oup.com/jcde/advance-article-pdf/doi/10.1093/jcde/qwad025/52601055/qwad025.pdf
+PDF_URL: https://academic.oup.com/jcde/advance-article-pdf/doi/10.1093/jcde/qwad025/49633272/qwad025.pdf
+
+---
+
+The paper is **gold open access** (CC BY license) via Oxford Academic, so all three URLs above are freely accessible without a paywall. The first one (`50297139/qwad025.pdf`) is the canonical published-version PDF. No separate arXiv, Europe PMC, or Zenodo copies were found.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T18:01:20.810849
+DOI: 10.3390/s21186046
+============================================================
+[2026-03-30T18:02:13.440545] STEP 1 - PDF search
+**Paper Title:**
+Synthetic Image Generation Using the Finite Element Method and Blender Graphics Program for Modeling of Vision-Based Measurement Systems
+
+**PDF URLs found:**
+
+PDF_URL: https://www.mdpi.com/1424-8220/21/18/6046/pdf?version=1631260135
+PDF_URL: https://www.mdpi.com/1424-8220/21/18/6046/pdf
+
+**Notes:**
+- The paper is **gold open access** (CC-BY license), published in *Sensors* (MDPI).
+- Both Unpaywall and Semantic Scholar point to the same MDPI-hosted PDF. The versioned URL (`?version=1631260135`) is the canonical one confirmed by the APIs.
+- PubMed/PMC also hosts this article (PMC ID: `PMC8472785`), which may provide an additional HTML/PDF route via PubMed Central.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-03-30T18:23:24.381956
+DOI: 10.1145/3727874
+============================================================
+[2026-03-30T18:24:14.271843] STEP 1 - PDF search
+**Paper Title:** Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+**PDF URLs found:**
+
+PDF_URL: https://arxiv.org/pdf/2410.09417
+
+The ACM publisher page is paywalled (HTTP 403). Semantic Scholar lists the paper but has no hosted PDF. The ArXiv preprint (arXiv:2410.09417) is the only confirmed freely available PDF version.
+------------------------------------------------------------

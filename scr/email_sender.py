@@ -21,27 +21,43 @@ BARK_URL = "https://api.day.app/push"
 
 # ── Send ──────────────────────────────────────────────────────────────────────
 
+CHUNK_SIZE = 4000   # Bark body character limit per message
+
+def _split(text: str, size: int) -> list[str]:
+    """Split text into chunks of at most *size* chars, breaking on newlines where possible."""
+    chunks = []
+    while len(text) > size:
+        cut = text.rfind("\n", 0, size)
+        if cut == -1:
+            cut = size
+        chunks.append(text[:cut])
+        text = text[cut:].lstrip("\n")
+    if text:
+        chunks.append(text)
+    return chunks
+
 def send_report(subject: str, body: str, recipient: str = ""):
     if BARK_KEY == "YOUR_BARK_KEY_HERE":
         print("[bark] BARK_KEY not set — skipping notification.")
         return
 
-    # Bark body limit is ~4000 chars; truncate with notice if needed
-    if len(body) > 4000:
-        body = body[:3970] + "\n\n...[truncated]"
+    chunks = _split(body, CHUNK_SIZE)
+    ascii_subject = subject.encode("ascii", errors="replace").decode("ascii")
 
     try:
-        r = requests.post(
-            BARK_URL,
-            json={
-                "device_key": BARK_KEY,
-                "title": subject.encode("ascii", errors="replace").decode("ascii"),
-                "body": body,
-                "isArchive": "1",    # save in Bark history so you can re-read anytime
-            },
-            timeout=15,
-        )
-        r.raise_for_status()
-        print(f"[bark] Notification sent.")
+        for i, chunk in enumerate(chunks, 1):
+            title = ascii_subject if len(chunks) == 1 else f"{ascii_subject} ({i}/{len(chunks)})"
+            r = requests.post(
+                BARK_URL,
+                json={
+                    "device_key": BARK_KEY,
+                    "title": title,
+                    "body": chunk,
+                    "isArchive": "1",
+                },
+                timeout=15,
+            )
+            r.raise_for_status()
+        print(f"[bark] Sent {len(chunks)} message(s).")
     except Exception as e:
         print(f"[bark] Send failed: {e}")

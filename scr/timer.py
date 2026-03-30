@@ -172,7 +172,7 @@ def run_local():
     generate_daily_report()
     print("\n[timer] All done.")
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Reportea pipeline orchestrator")
     parser.add_argument(
         "--now", metavar="HOURS", nargs="?", const=1, type=float,
@@ -197,3 +197,6 @@ if __name__ == "__main__":
             run(deadline)
     except KeyboardInterrupt:
         print("\n[timer] Interrupted by user.")
+
+if __name__ == "__main__":
+    main()

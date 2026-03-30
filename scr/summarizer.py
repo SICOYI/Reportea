@@ -10,6 +10,12 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from email_sender import send_report
+    _EMAIL_AVAILABLE = True
+except ImportError:
+    _EMAIL_AVAILABLE = False
+
 CLAUDE_BIN = "/Users/mac/.vscode/extensions/anthropic.claude-code-2.1.87-darwin-x64/resources/native-binary/claude"
 
 ROOT       = Path(__file__).parent.parent
@@ -70,6 +76,11 @@ def generate_daily_report() -> Path | None:
     out_path = OUTPUT_DIR / f"{today}report.md"
     out_path.write_text(report, encoding="utf-8")
     print(f"    Report saved to: {out_path}")
+
+    if _EMAIL_AVAILABLE:
+        subject = f"Tech & Research Daily — {today_display}"
+        send_report(subject, report)
+
     return out_path
 
 if __name__ == "__main__":

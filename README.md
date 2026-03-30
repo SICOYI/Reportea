@@ -113,7 +113,7 @@ python scr/summarizer.py
 
 3. **Phone notifications (optional)** — install the [ntfy app](https://ntfy.sh) on your phone, subscribe to your chosen topic, then set `TOPIC` in `scr/email_sender.py`. The daily report will be pushed automatically after each run.
 
-3. **Claude binary** — requires the Claude Code VS Code extension. If you see `FileNotFoundError`:
+4. **Claude binary** — requires the Claude Code VS Code extension. If you see `FileNotFoundError`:
    ```bash
    ls ~/.vscode/extensions/ | grep anthropic
    # Update CLAUDE_BIN in each scr/*.py with the current version number
@@ -126,7 +126,7 @@ python scr/summarizer.py
 | Path | Content |
 |---|---|
 | `summaries/{safe_doi}_summary.md` | Structured research summary per paper (Title, Authors, Abstract, Keywords, Methodology, Findings, etc.) |
-| `summaries/{YYYY-MM-DD}report.md` | Daily tech digest in newspaper format (≤500 words) |
+| `summaries/{YYYY-MM-DD}report.md` | Daily tech digest in newspaper format (≤1500 words) |
 | `doi_cache/*_cited_dois.json` | Validated citation DOIs per PDF — persists across runs to avoid re-validating |
 | `keywords_list.csv` | Transient — written and deleted each cycle; `keywords (pipe-sep), doi` |
 | `claude_responses.log` | Append-only log of every Claude interaction, separated by session |
@@ -167,8 +167,10 @@ Reportea/
 │   ├── timer.py              # Orchestrator
 │   ├── extractor.py          # DOIExtractor, KeywordExtractor, CitationExtractor
 │   ├── key_words_lib.py      # Keyword library + CSV generation + comparison
-│   ├── calling_llm_reader.py # DOI → PDF → summary
-│   └── summarizer.py         # Daily tech digest generator
+│   ├── calling_llm_reader.py # DOI → PDF → summary; or local PDF → summary
+│   ├── summarizer.py         # Daily tech digest generator
+│   └── email_sender.py       # ntfy.sh push notification client
 ├── keywords_list.csv         # Transient (created/deleted each cycle)
-└── claude_responses.log      # Full interaction log
+├── claude_responses.log      # Full interaction log
+└── .token_cache.json         # (not created — ntfy needs no auth)
 ```

@@ -6,16 +6,16 @@ Schedule:
 
          Initialization
            ├── Build keywords library from base_papers/
-           ├── Extract base paper DOIs → process via calling_llm_reader
+           ├── Process base papers (doi-first, title-fallback per paper)
            ├── Clear pdf_cache/
-           ├── Generate keywords_list.csv from base_papers/ citations
-           ├── Compare CSV against library → top-10 related DOIs
+           ├── Generate unified keywords_list.csv (DOIs + titles) from base_papers/ citations
+           ├── Compare CSV against library → top-10 related papers
            └── Delete keywords_list.csv
 
          Loop  (repeats until 04:00)
-           ├── Process related DOIs via calling_llm_reader
-           ├── Generate keywords_list.csv from pdf_cache/ citations
-           ├── Compare CSV against library → next top-10 DOIs
+           ├── Process related papers (doi-first, title-fallback per paper)
+           ├── Generate unified keywords_list.csv from pdf_cache/ citations
+           ├── Compare CSV against library → next top-10 papers
            ├── Clear pdf_cache/
            └── Delete keywords_list.csv
 
@@ -30,11 +30,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from extractor import DOIExtractor, TitleExtractor
+from extractor import TitleExtractor, extract_pdf_text, DOI_PATTERN
 from key_words_lib import (
     build_keywords_library,
     generate_citations_csv,
-    generate_citations_csv_titles,
     compare_csv_with_library,
     CSV_PATH,
 )
@@ -86,52 +85,83 @@ def delete_csv():
         CSV_PATH.unlink()
         print(f"[timer] Deleted {CSV_PATH.name}")
 
-# ── Process a list of DOIs ────────────────────────────────────────────────────
+# ── Pair DOI + title per base paper ──────────────────────────────────────────
 
-def process_dois(dois: list[str], deadline: datetime):
-    if not dois:
-        print("[timer] No DOIs to process.")
-        return
+def get_base_paper_items() -> list[tuple[str, str]]:
+    """
+    For each PDF in base_papers/, return (doi, title).
+    DOI is extracted via regex; title is extracted via Claude.
+    Either may be empty if extraction fails.
+    """
+    items: list[tuple[str, str]] = []
+    for pdf in sorted(BASE_PAPERS_DIR.glob("*.pdf")):
+        text = extract_pdf_text(pdf)
+        matches = DOI_PATTERN.findall(text[:3000]) if text else []
+        doi = matches[0] if matches else ""
+        title = TitleExtractor.extract_title(pdf)
+        print(f"  {pdf.name} → doi={doi or '(none)'}, title={title[:70]!r}")
+        items.append((doi, title))
+    return items
 
-    print(f"\n[timer] Processing {len(dois)} DOI(s) ...")
-    for i, doi in enumerate(dois, 1):
-        if not is_within_window(deadline):
-            print(f"\n[timer] Deadline reached — stopping early.")
-            return
-        print(f"\n  [{i}/{len(dois)}] {doi}")
+# ── Process a single paper: doi-first, title-fallback ────────────────────────
+
+def process_item(doi: str, title: str, deadline: datetime) -> bool:
+    """
+    Try to download and summarize a paper.
+    Attempts the DOI path first; falls back to title-based browser search if
+    the DOI is missing or the download fails.
+    Returns True if a summary was produced.
+    """
+    if not is_within_window(deadline):
+        return False
+
+    label = doi or title
+    print(f"\n  Processing: {label}")
+    log_session_start(label)
+
+    # ── DOI path ──────────────────────────────────────────────────────────────
+    if doi:
         try:
-            log_session_start(doi)
-            title, pdf_urls = get_pdf_links(doi)
+            fetched_title, pdf_urls = get_pdf_links(doi)
             pdf_path = download_pdf(pdf_urls, doi)
             if pdf_path:
                 text = extract_text(pdf_path)
                 if text:
-                    summarize_and_save(title, doi, text)
+                    summarize_and_save(fetched_title or title, doi, text)
+                    return True
+            print(f"  [WARN] DOI path yielded no PDF for {doi} — trying title fallback.")
         except Exception as e:
-            print(f"  [ERROR] {doi}: {e}")
+            print(f"  [WARN] DOI path failed for {doi}: {e} — trying title fallback.")
 
-# ── Process a list of titles (title-based fallback) ───────────────────────────
-
-def process_titles(titles: list[str], deadline: datetime):
-    if not titles:
-        print("[timer] No titles to process.")
-        return
-
-    print(f"\n[timer] Processing {len(titles)} title(s) via browser ...")
-    for i, title in enumerate(titles, 1):
-        if not is_within_window(deadline):
-            print(f"\n[timer] Deadline reached — stopping early.")
-            return
-        print(f"\n  [{i}/{len(titles)}] {title}")
+    # ── Title fallback ────────────────────────────────────────────────────────
+    if title:
         try:
-            log_session_start(title)
             pdf_path = find_and_download_pdf(title)
             if pdf_path:
                 text = extract_text(pdf_path)
                 if text:
-                    summarize_and_save(title, title, text)
+                    summarize_and_save(title, doi or title, text)
+                    return True
         except Exception as e:
-            print(f"  [ERROR] {title}: {e}")
+            print(f"  [ERROR] Title path failed for {title!r}: {e}")
+
+    print(f"  [SKIP] Could not process: {label}")
+    return False
+
+# ── Process a list of (doi, title) pairs ─────────────────────────────────────
+
+def process_items(items: list[tuple[str, str]], deadline: datetime):
+    if not items:
+        print("[timer] No items to process.")
+        return
+
+    print(f"\n[timer] Processing {len(items)} paper(s) ...")
+    for i, (doi, title) in enumerate(items, 1):
+        if not is_within_window(deadline):
+            print(f"\n[timer] Deadline reached — stopping early.")
+            return
+        print(f"\n  [{i}/{len(items)}]")
+        process_item(doi, title, deadline)
 
 # ── Main flow ─────────────────────────────────────────────────────────────────
 
@@ -146,49 +176,24 @@ def run(deadline: datetime):
 
     # ── Initialization: process base papers ──────────────────────────────────
     print("\n[timer] Init — processing base papers ...")
-    base_dois = DOIExtractor.get_dois_from_base_papers()
+    base_items = get_base_paper_items()
+    process_items(base_items, deadline)
+    clear_pdf_cache()
 
-    if base_dois:
-        use_title_mode = False
-        process_dois(base_dois, deadline)
-        clear_pdf_cache()
-        n = generate_citations_csv(BASE_PAPERS_DIR, CSV_PATH)
-        if n == 0:
-            print("[timer] No citation DOIs found — falling back to title-based citation discovery.")
-            use_title_mode = True
-            generate_citations_csv_titles(BASE_PAPERS_DIR, CSV_PATH)
-    else:
-        use_title_mode = True
-        print("[timer] No DOIs found — switching to title-based mode.")
-        base_titles = TitleExtractor.extract_titles_from_dir(BASE_PAPERS_DIR)
-        process_titles(base_titles, deadline)
-        clear_pdf_cache()
-        generate_citations_csv_titles(BASE_PAPERS_DIR, CSV_PATH)
-
+    # ── First discovery: citations from base_papers/ ─────────────────────────
+    generate_citations_csv(BASE_PAPERS_DIR, CSV_PATH)
     results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
-    related_items = [item for item, _, _ in results]
+    related_items = [(doi, title) for doi, title, _, _ in results]
     delete_csv()
 
     # ── Loop: discover → process → discover ... ───────────────────────────────
     iteration = 1
     while is_within_window(deadline) and related_items:
-        mode_label = "title(s)" if use_title_mode else "DOI(s)"
-        print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_items)} {mode_label}")
-
-        if use_title_mode:
-            process_titles(related_items, deadline)
-            generate_citations_csv_titles(CACHE_DIR, CSV_PATH)
-        else:
-            process_dois(related_items, deadline)
-            n = generate_citations_csv(CACHE_DIR, CSV_PATH)
-            if n == 0:
-                print("[timer] No citation DOIs found — falling back to title-based citation discovery.")
-                use_title_mode = True
-                generate_citations_csv_titles(CACHE_DIR, CSV_PATH)
-
+        print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_items)} paper(s)")
+        process_items(related_items, deadline)
+        generate_citations_csv(CACHE_DIR, CSV_PATH)
         results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
-        related_items = [item for item, _, _ in results]
-
+        related_items = [(doi, title) for doi, title, _, _ in results]
         clear_pdf_cache()
         delete_csv()
         iteration += 1

@@ -46,7 +46,7 @@ def find_and_download_pdf(title: str, output_dir: Path = CACHE_DIR) -> Path | No
     )
     result = subprocess.run(
         [CLAUDE_BIN, "-p", prompt, "--allowedTools", "WebSearch,WebFetch"],
-        capture_output=True, text=True
+        capture_output=True, text=True, timeout=300
     )
 
     # Prefer explicitly tagged URLs; fall back to any .pdf URL in the response

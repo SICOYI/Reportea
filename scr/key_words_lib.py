@@ -3,8 +3,8 @@ key_words_lib.py
 
 Keyword library management and comparison:
   - build_keywords_library()    : extract keywords from base_papers/ → library
-  - generate_citations_csv()    : citation DOIs → keywords → keywords_list.csv
-  - compare_csv_with_library()  : score each CSV row against library, return top-N DOIs
+  - generate_citations_csv()    : citation DOIs + titles → keywords → keywords_list.csv
+  - compare_csv_with_library()  : score each CSV row against library, return top-N (doi, title) pairs
 """
 
 import csv
@@ -64,49 +64,6 @@ def _fetch_keywords_for_doi(doi: str) -> set[str]:
     raw = [kw.strip() for kw in result.stdout.strip().split(",") if kw.strip()]
     return KeywordExtractor.normalize(raw)
 
-# ── Generate citations CSV ────────────────────────────────────────────────────
-
-def generate_citations_csv(source_dir: Path, csv_path: Path) -> int:
-    """
-    For every PDF in source_dir:
-      1. Extract + validate its citation DOIs via CitationExtractor
-      2. Fetch keywords for each DOI via Claude (web search)
-      3. Write to csv_path:
-            keywords (pipe-separated)  |  doi
-
-    Returns the number of rows written.
-
-    CSV format:
-        keywords,doi
-        keyword1|keyword2|keyword3,10.xxxx/yyyy
-    """
-    # Collect unique citation DOIs from all PDFs in source_dir
-    all_dois: list[str] = []
-    for pdf in sorted(source_dir.glob("*.pdf")):
-        dois = CitationExtractor.extract_and_cache(pdf)
-        all_dois.extend(dois)
-    unique_dois = list(dict.fromkeys(all_dois))
-
-    if not unique_dois:
-        print(f"  No valid cited DOIs found in {source_dir.name}/")
-        return 0
-
-    print(f"\n[keywords] Fetching keywords for {len(unique_dois)} citation DOI(s) ...")
-    rows: list[tuple[str, str]] = []
-    for i, doi in enumerate(unique_dois, 1):
-        print(f"  [{i}/{len(unique_dois)}] {doi}")
-        kws = _fetch_keywords_for_doi(doi)
-        if kws:
-            rows.append(("|".join(sorted(kws)), doi))
-
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["keywords", "doi"])
-        writer.writerows(rows)
-
-    print(f"  Wrote {len(rows)} rows → {csv_path.name}")
-    return len(rows)
-
 # ── Fetch keywords for a single title ────────────────────────────────────────
 
 def _fetch_keywords_for_title(title: str) -> set[str]:
@@ -122,43 +79,63 @@ def _fetch_keywords_for_title(title: str) -> set[str]:
     raw = [kw.strip() for kw in result.stdout.strip().split(",") if kw.strip()]
     return KeywordExtractor.normalize(raw)
 
-# ── Generate citations CSV (title-based) ─────────────────────────────────────
+# ── Generate unified citations CSV (DOI + title, 3 columns) ──────────────────
 
-def generate_citations_csv_titles(source_dir: Path, csv_path: Path) -> int:
+def generate_citations_csv(source_dir: Path, csv_path: Path) -> int:
     """
-    For every PDF in source_dir:
-      1. Extract cited paper titles via TitleExtractor
-      2. Fetch keywords for each title via Claude (web search)
-      3. Write to csv_path:
-            keywords (pipe-separated)  |  title
+    For every PDF in source_dir, run both CitationExtractor (DOIs) and
+    TitleExtractor (titles) on the references section.
 
+    For each unique DOI found: fetch keywords → row (keywords, doi, "")
+    For each unique title found: fetch keywords → row (keywords, "", title)
+
+    Writes to csv_path with 3 columns: keywords, doi, title
     Returns the number of rows written.
 
     CSV format:
-        keywords,title
-        keyword1|keyword2|keyword3,Some Paper Title
+        keywords,doi,title
+        keyword1|keyword2|keyword3,10.xxxx/yyyy,
+        keyword1|keyword2|keyword3,,Some Paper Title
     """
+    all_dois: list[str] = []
     all_titles: list[str] = []
+
     for pdf in sorted(source_dir.glob("*.pdf")):
+        dois = CitationExtractor.extract_and_cache(pdf)
+        all_dois.extend(dois)
         titles = TitleExtractor.extract_citation_titles(pdf)
         all_titles.extend(titles)
+
+    unique_dois   = list(dict.fromkeys(all_dois))
     unique_titles = list(dict.fromkeys(all_titles))
 
-    if not unique_titles:
-        print(f"  No citation titles found in {source_dir.name}/")
+    if not unique_dois and not unique_titles:
+        print(f"  No citation DOIs or titles found in {source_dir.name}/")
         return 0
 
-    print(f"\n[keywords] Fetching keywords for {len(unique_titles)} citation title(s) ...")
-    rows: list[tuple[str, str]] = []
-    for i, title in enumerate(unique_titles, 1):
-        print(f"  [{i}/{len(unique_titles)}] {title}")
-        kws = _fetch_keywords_for_title(title)
-        if kws:
-            rows.append(("|".join(sorted(kws)), title))
+    print(f"\n[keywords] {len(unique_dois)} citation DOI(s), {len(unique_titles)} citation title(s) found.")
+
+    rows: list[tuple[str, str, str]] = []
+
+    if unique_dois:
+        print(f"[keywords] Fetching keywords for {len(unique_dois)} DOI(s) ...")
+        for i, doi in enumerate(unique_dois, 1):
+            print(f"  [{i}/{len(unique_dois)}] {doi}")
+            kws = _fetch_keywords_for_doi(doi)
+            if kws:
+                rows.append(("|".join(sorted(kws)), doi, ""))
+
+    if unique_titles:
+        print(f"[keywords] Fetching keywords for {len(unique_titles)} title(s) ...")
+        for i, title in enumerate(unique_titles, 1):
+            print(f"  [{i}/{len(unique_titles)}] {title}")
+            kws = _fetch_keywords_for_title(title)
+            if kws:
+                rows.append(("|".join(sorted(kws)), "", title))
 
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["keywords", "title"])
+        writer.writerow(["keywords", "doi", "title"])
         writer.writerows(rows)
 
     print(f"  Wrote {len(rows)} rows → {csv_path.name}")
@@ -170,13 +147,11 @@ def compare_csv_with_library(
     csv_path: Path,
     all_kws: set[str],
     top_n: int = 10,
-) -> list[tuple[str, int, set[str]]]:
+) -> list[tuple[str, str, int, set[str]]]:
     """
-    Read keywords_list.csv.
-    Supports both DOI-based (columns: keywords, doi) and
-    title-based (columns: keywords, title) CSV formats.
+    Read keywords_list.csv (3 columns: keywords, doi, title).
     Score each row's keywords against all_kws.
-    Returns list of (identifier, overlap_count, matched_keywords)
+    Returns list of (doi, title, overlap_count, matched_keywords)
     sorted by overlap_count descending, capped at top_n.
     """
     if not all_kws:
@@ -187,26 +162,28 @@ def compare_csv_with_library(
         print(f"  {csv_path.name} not found.")
         return []
 
-    scores: list[tuple[str, int, set[str]]] = []
+    scores: list[tuple[str, str, int, set[str]]] = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Accept either a doi or title column as identifier
-            identifier = row.get("doi", "").strip() or row.get("title", "").strip()
+            doi   = row.get("doi",   "").strip()
+            title = row.get("title", "").strip()
             kws_raw = row.get("keywords", "")
-            if not identifier or not kws_raw:
+            if not doi and not title:
                 continue
-            kws = KeywordExtractor.normalize(kws_raw.split("|"))
+            kws = KeywordExtractor.normalize(kws_raw.split("|")) if kws_raw else set()
             overlap = kws & all_kws
-            if overlap:
-                scores.append((identifier, len(overlap), overlap))
+            scores.append((doi, title, len(overlap), overlap))
 
-    scores.sort(key=lambda x: x[1], reverse=True)
+    scores.sort(key=lambda x: x[2], reverse=True)
     top = scores[:top_n]
 
-    print(f"\n[keywords] {len(scores)} matches → returning top {len(top)}:")
-    for rank, (identifier, score, matched) in enumerate(top, 1):
-        print(f"  {rank:2}. [{score}] {identifier}  ({', '.join(sorted(matched))})")
+    matched_count = sum(1 for _, _, s, _ in scores if s > 0)
+    print(f"\n[keywords] {matched_count} keyword match(es) among {len(scores)} — returning top {len(top)}:")
+    for rank, (doi, title, score, matched) in enumerate(top, 1):
+        label = doi or title
+        kw_label = f"({', '.join(sorted(matched))})" if matched else "(no keyword overlap)"
+        print(f"  {rank:2}. [{score}] {label}  {kw_label}")
 
     return top
 
@@ -225,9 +202,10 @@ if __name__ == "__main__":
         results = compare_csv_with_library(CSV_PATH, all_kws, top_n=10)
 
         if results:
-            print("\n── Top related DOIs ──")
-            for rank, (doi, score, matched) in enumerate(results, 1):
-                print(f"  {rank:2}. [{score}] {doi}")
+            print("\n── Top related papers ──")
+            for rank, (doi, title, score, matched) in enumerate(results, 1):
+                label = doi or title
+                print(f"  {rank:2}. [{score}] {label}")
         else:
             print("\nNo overlapping papers found.")
 

@@ -1,0 +1,577 @@
+
+============================================================
+SESSION START  2026-04-01T14:39:50.428684
+DOI: A Machine Learning-Based Surrogate Finite Element Model for Estimating Dynamic Response of Mechanical Systems
+============================================================
+
+============================================================
+SESSION START  2026-04-01T14:42:48.799575
+DOI: Multi-Level GNN Preconditioner for Solving Large Scale Problems
+============================================================
+[2026-04-01T14:43:50.952659] STEP 4 - Summary
+## Title
+Multi-Level GNN Preconditioner for Solving Large Scale Problems
+
+## Authors
+- Matthieu Nastorg — Université Paris-Saclay, CNRS, Inria, LISN
+- Jean-Marc Gratien — IFP Énergies-Nouvelles
+- Thibault Faney — IFP Énergies-Nouvelles
+- Michele Alessandro Bucci — Safran Tech
+- Guillaume Charpiat — Université Paris-Saclay, CNRS, Inria, LISN
+- Marc Schoenauer — Université Paris-Saclay, CNRS, Inria, LISN
+
+## Abstract
+This paper proposes a novel GNN-based preconditioner that integrates Graph Neural Networks within a multi-level Domain Decomposition framework to solve large-scale Poisson problems. The preconditioner enhances Krylov iterative methods, forming a hybrid solver that converges to any desired accuracy, runs efficiently on GPUs, and scales to meshes of arbitrary size and shape.
+
+## Keywords
+- Graph Neural Networks (GNNs)
+- Multi-Level Domain Decomposition
+- Partial Differential Equations (PDEs)
+- Hybrid Solvers
+- Krylov Methods
+- Additive Schwarz Method
+- Preconditioning
+
+## Research Problem
+- Solving large-scale Poisson equations is a major computational bottleneck in numerical simulations (e.g., CFD).
+- **Traditional solvers** (CPU-based Krylov methods) guarantee convergence but are limited in parallelism and scalability.
+- **ML/GNN-based solvers** leverage GPU parallelism but suffer from:
+  - Poor generalization to out-of-distribution or large-scale problems
+  - No convergence guarantees
+  - Limited accuracy tied to training performance
+- Existing hybrid methods remain restricted to small-scale or Cartesian-grid problems.
+
+## Methodology
+- **Problem formulation:** Steady-state Poisson equation with Dirichlet boundary conditions, discretized via FEM on unstructured meshes, yielding a sparse linear system `Au = b`.
+- **Preconditioner design:** Mirrors the structure of the multi-level Additive Schwarz Method (ASM):
+  - The global domain is decomposed into `K` overlapping sub-domains.
+  - GNN models solve local sub-problems in parallel on GPU.
+  - A two-level extension adds a coarse problem to improve weak scalability.
+- **Hybrid solver:** The GNN preconditioner `M⁻¹` is plugged into a Preconditioned Conjugate Gradient (PCG) loop, ensuring convergence to any target tolerance.
+- **Scalability:** Sub-domain sizes are adapted to GNN capacity; batched GPU execution handles many sub-domains concurrently.
+
+## Key Findings
+- The GNN preconditioner significantly reduces the number of Krylov iterations needed to reach a target accuracy.
+- The hybrid solver converges to arbitrary precision, overcoming the fixed-accuracy ceiling of standalone ML solvers.
+- The two-level approach improves weak scalability as the number of sub-domains grows.
+- The method generalizes to meshes of varying sizes and shapes, not just fixed-size training distributions.
+- Performance is competitive against an optimized C++ legacy linear solver used in real CFD software.
+
+## Contributions
+- **Novel preconditioner:** First integration of a GNN solver within a multi-level Additive Schwarz preconditioning framework.
+- **Scalability to large meshes:** Sub-domain decomposition decouples GNN inference from global mesh size, enabling industrial-scale use.
+- **Convergence guarantee:** By embedding the GNN as a preconditioner in a Krylov method, the hybrid solver inherits rigorous convergence properties absent in pure ML approaches.
+- **GPU efficiency:** Batched sub-domain solving fully exploits GPU parallelism.
+- **Fair benchmarking:** In-depth performance analysis against a production C++ solver provides a realistic evaluation.
+
+## Limitations
+- The method is demonstrated primarily on the Poisson equation; extension to other PDEs is not fully explored.
+- GNN generalization still depends on training distribution quality; severe out-of-distribution cases may degrade preconditioner quality (though the Krylov method still converges).
+- The paper acknowledges that prior hybrid methods using PINNs or Deep Ritz replacements are limited to small Cartesian data — this work improves but does not fully eliminate training-distribution sensitivity.
+- Legacy code integration and GPU infrastructure requirements may pose practical adoption barriers.
+
+## Conclusion
+The proposed multi-level GNN preconditioner successfully bridges the gap between data-driven GPU-accelerated methods and classical solver guarantees. By embedding GNN inference inside a Domain Decomposition preconditioner for Krylov methods, the hybrid solver achieves convergence to any desired accuracy while benefiting from GPU parallelism and generalization to large, unstructured meshes. Benchmarks against a C++ legacy solver confirm the method's competitiveness for real industrial CFD workflows, with the two-level extension ensuring scalability across increasing sub-domain counts.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:43:50.953745
+DOI: Learning from Linear Algebra: A Graph Neural Network Approach to Preconditioner Design for Conjugate Gradient Solvers
+============================================================
+[2026-04-01T14:44:56.144338] STEP 4 - Summary
+## Title
+Learning from Linear Algebra: A Graph Neural Network Approach to Preconditioner Design for Conjugate Gradient Solvers
+
+## Authors
+- Vladislav Trifonov (Skoltech, Sberbank AI4S Center)
+- Alexander Rudikov (Skoltech, AIRI)
+- Oleg Iliev (Fraunhofer ITWM)
+- Yuri M. Laevsky (ICM&MG SB RAS)
+- Ivan Oseledets (Skoltech, AIRI)
+- Ekaterina Muravleva (Skoltech, Sberbank AI4S Center)
+
+## Abstract
+The paper proposes **PreCorrector**, a GNN-based framework for preconditioner design targeting symmetric positive definite (SPD) linear systems arising from parametric PDEs. Rather than learning preconditioners from scratch, PreCorrector learns corrections to classical incomplete Cholesky (IC) factorizations, reducing the condition number more than classical or prior neural methods. A heuristic justification for the loss function emphasizing low-frequency components is also provided.
+
+## Keywords
+- Preconditioner design
+- Conjugate Gradient (CG) method
+- Graph Neural Networks (GNN)
+- Sparse linear systems
+- Incomplete Cholesky factorization
+- Parametric PDEs
+- Condition number
+
+## Research Problem
+- Large, sparse, ill-conditioned linear systems from parametric PDE discretizations are computationally expensive to solve.
+- Classical preconditioners (IC, ILU families) reduce the condition number but have inherent limits at a fixed sparsity pattern.
+- Existing GNN-based preconditioner approaches **fail to outperform classical methods** in terms of condition number reduction at the same sparsity level.
+- Standard loss functions (Frobenius norm) penalize high-frequency components, which are less important for CG convergence; **low-frequency components** are more critical.
+
+## Methodology
+- **PreCorrector architecture:** GNN parameterizes corrections to the non-zero entries of a classical IC(0) Cholesky factor `L`, rather than predicting a factorization from scratch.
+- **Graph representation:** The SPD matrix `A` is mapped to a graph `G = (V, E)`, where off-diagonal entries are edges and right-hand side entries are vertex features.
+- **In-place ILU update:** Demonstrates via gradient descent on individual sparse matrix entries that better preconditioners at the same sparsity exist — motivating learning.
+- **Loss function:** Replaces standard Frobenius loss with an A⁻¹-weighted variant:
+
+  `L = (1/N) Σ ‖L(θ)L(θ)ᵀ xᵢ − bᵢ‖²`
+
+  where `A⁻¹bᵢ = xᵢ`, emphasizing low-frequency (small eigenvalue) components.
+- **Dataset generation:** Novel approach with a measurable complexity metric reflecting real-world parametric PDE variability (high-contrast coefficients, varying scales).
+- **Experiments:** Varying matrix sizes and dataset complexities; compared against classical IC/ILU preconditioners and prior GNN-based methods (Li et al., 2023; Häusner et al., 2023).
+
+## Key Findings
+- PreCorrector **outperforms both classical preconditioners and prior GNN methods** in reducing the condition number for the tested class of parametric PDE systems.
+- The A⁻¹-weighted loss function produces preconditioners with better spectral properties for CG than the standard Frobenius loss.
+- Low-frequency components of the error dominate CG convergence difficulty; the proposed loss aligns training with this structure.
+- In-place gradient descent experiments confirm that improved preconditioners at fixed sparsity patterns are achievable, validating the learning objective.
+- Results are consistent across varying matrix sizes and dataset complexity levels.
+
+## Contributions
+1. **Novel preconditioner correction scheme:** GNN learns additive corrections to classical IC factors rather than constructing factorizations from scratch.
+2. **Loss function analysis:** Provides heuristic and experimental justification for an A⁻¹-weighted loss that prioritizes low-frequency spectrum improvement.
+3. **Dataset generation methodology:** Introduces a complexity metric for synthetic parametric PDE datasets that reflects real-world difficulty.
+4. **Empirical validation:** Extensive experiments demonstrating superiority over classical and neural baselines across problem scales and complexities.
+
+## Limitations
+- The paper is focused on **SPD matrices** only; applicability to non-symmetric or indefinite systems is not addressed.
+- The approach requires access to an initial classical IC factorization as a starting point.
+- Scalability to very large systems may be constrained by GNN inference cost, though a single inference is needed before the iteration loop.
+- The loss function justification remains **heuristic** rather than formally proven.
+- Results are demonstrated on a specific class of parametric PDE problems; generalization to other problem types is not fully explored.
+
+## Conclusion
+PreCorrector demonstrates that combining classical linear algebra preconditioners with GNN-learned corrections is a principled and effective strategy. By initializing from reliable IC factorizations and learning targeted spectral corrections via a low-frequency-aware loss, the method achieves condition number reductions beyond what classical methods can produce at equivalent sparsity. This bridges numerical linear algebra and machine learning in a way that respects the theoretical structure of the CG solver, offering a practical path toward faster convergence in large-scale scientific computing.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:44:56.146062
+DOI: 10.1145/3727874
+============================================================
+[2026-04-01T14:45:44.344986] STEP 1 - PDF search
+Here are the results:
+
+---
+
+**1) Paper Title:**
+**Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains**
+
+Authors: Gilles Daviet, Tianchang Shen, Nicholas Sharp, David I. W. Levin
+Published in: *ACM Transactions on Graphics*, Vol. 44, No. 2, April 2025
+
+---
+
+**2) Direct PDF URLs found:**
+
+PDF_URL: https://arxiv.org/pdf/2410.09417
+PDF_URL: https://research.nvidia.com/labs/toronto-ai/flexisim/assets/paper.pdf
+
+---
+
+**Notes per source:**
+- **arXiv** (arxiv.org/abs/2410.09417): Freely available preprint — confirmed direct PDF link.
+- **NVIDIA Research page** (research.nvidia.com/labs/toronto-ai/flexisim/): Project page hosts the paper PDF directly.
+- **Semantic Scholar**: No open-access PDF registered in their database for this DOI.
+- **Unpaywall**: API returned an error (422), likely because no OA record is indexed yet.
+- **ResearchGate**: Page returned 403 (login wall) — no direct PDF accessible without an account.
+- **ACM DL (publisher)**: Paywalled (403).
+
+Sources:
+- [Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains — ACM DL](https://dl.acm.org/doi/10.1145/3727874)
+- [[2410.09417] arXiv preprint](https://arxiv.org/abs/2410.09417)
+- [NVIDIA FlexiSim project page](https://research.nvidia.com/labs/toronto-ai/flexisim/)
+------------------------------------------------------------
+[2026-04-01T14:47:13.968422] STEP 4 - Summary
+## Title
+Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains
+
+## Authors
+- Gilles Daviet — NVIDIA, France
+- Tianchang Shen — NVIDIA, Canada
+- Nicholas Sharp — NVIDIA, USA
+- David I.W. Levin — NVIDIA, Canada
+
+## Abstract
+The paper presents an elastic simulator for domains defined as evolving implicit functions. The simulator is efficient, robust, and differentiable with respect to both shape and material parameters. A small neural network is trained to fit quadrature points for robust numerical integration on implicit grid cells. Combined with a Mixed Finite Element (FEM) formulation, this yields a smooth, fully differentiable simulation model linking implicit surface evolution to elastic response.
+
+## Keywords
+- Differentiable simulation
+- Numerical integration
+- Topology optimization
+- Shape reconstruction
+- Finite element methods
+- Neural networks
+
+## Research Problem
+- Modern 3D reconstruction methods (NeRFs, implicit surfaces, Gaussian splats) produce geometry as **evolving implicit functions**, but physically simulating and optimizing such shapes under deformation remains challenging.
+- Existing approaches suffer from one or more of the following:
+  - Conforming mesh FEM requires high resolution and costly remeshing as geometry evolves.
+  - Density-based meshless methods yield fuzzy interfaces.
+  - Fixed quadrature points introduce non-smoothness and ill-conditioning as surfaces evolve.
+- No prior method simultaneously optimizes **geometry, topology, and material properties** in a unified differentiable pipeline.
+
+## Methodology
+- **Grid-based discretization**: Geometry is represented as an implicit function on a regular grid, avoiding explicit mesh tracking.
+- **Mixed Finite Element Method (FEM)**: Uses a rotation-aware mixed-variational formulation (based on Trusty et al. [2022]) that supports high-order basis functions and remains stable across wide ranges of material stiffness (up to four orders of magnitude).
+- **Neural quadrature**: A small, per-element neural network learns quadrature point locations and weights as a function of the underlying implicit shape. This allows points and weights to evolve smoothly with the shape, avoiding the non-smoothness of fixed quadrature schemes.
+- **End-to-end differentiability**: The full pipeline is differentiable with respect to both shape parameters (implicit function) and material parameters, enabling gradient-based optimization.
+- **Integration with FlexiCubes**: The simulator is coupled with the FlexiCubes reconstruction algorithm to enable physics-aware 3D reconstruction from images.
+
+## Key Findings
+- Neural quadrature produces smooth, differentiable integration over evolving implicit domains, outperforming fixed ("Full") and clipped ("Clip") quadrature schemes in stability and accuracy.
+- The mixed FEM formulation prevents performance degradation even with wildly varying material properties.
+- The method can simulate **sub-grid thin features** that fall below grid resolution.
+- The combined system successfully performs:
+  - Forward simulation of implicit shapes.
+  - Direct simulation during 3D shape editing.
+  - Image-guided material, shape, and topology optimization via differentiable rendering.
+- Both components (mixed FEM and neural quadrature) are individually necessary — ablations show degraded results when either is removed.
+
+## Contributions
+1. **Neural quadrature scheme**: First application of per-element neural networks to learn quadrature rules for implicit-domain FEM, enabling smooth differentiability as geometry evolves.
+2. **High-order mixed FEM on implicit grids**: A performant variant avoiding per-element SVD at each simulation sub-step, stable across extreme material parameter ranges.
+3. **Fully differentiable elasticity simulator**: End-to-end differentiable w.r.t. both shape and material, enabling simultaneous geometry and physics optimization.
+4. **Novel applications**: Demonstrated image-guided topology optimization and physics-reinforced 3D reconstruction without requiring a shape prior.
+
+## Limitations
+- The paper acknowledges the text was truncated, so a complete limitations section is not available. Based on the content present:
+  - The neural quadrature requires training a network per element, which may introduce computational overhead.
+  - The approach is tied to implicit/grid-based representations and may not directly extend to explicit mesh workflows.
+  - Material parameter ranges during optimization can still reach extreme values (up to four orders of magnitude), which, while handled, represents a challenging regime.
+
+## Conclusion
+The authors present a novel elastic simulation framework that tightly couples neural-network-based quadrature with a mixed FEM formulation to enable robust, differentiable simulation of shapes represented as evolving implicit functions. By making the simulator fully differentiable with respect to both geometry and material, it bridges the gap between state-of-the-art 3D reconstruction (which produces implicit geometry) and physics-based shape/topology/material optimization — enabling applications such as image-guided topology optimization and physically-reinforced reconstruction that were previously impractical.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:47:13.969716
+DOI: 10.1002/pamm.202200306
+============================================================
+[2026-04-01T14:48:10.299675] STEP 1 - PDF search
+Here are the results:
+
+**1) Paper Title:**
+*Graph Neural Network enhanced Finite Element modelling*
+— Rutwik Gulakala, B. Markert, M. Stoffel
+— Published in PAMM (Proceedings in Applied Mathematics and Mechanics), 2022
+— License: CC BY-NC-ND (Hybrid Open Access)
+
+---
+
+**2) Direct PDF URLs found:**
+
+Unpaywall (oadoi.org) redirects directly to the publisher PDF, and Semantic Scholar confirms the same open-access URL. No additional copies were found on ResearchGate or Semantic Scholar's own hosting.
+
+PDF_URL: https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/pamm.202200306
+
+---
+
+**Notes:**
+- This is the only freely available PDF — hosted directly by the publisher (Wiley) under hybrid open access (CC BY-NC-ND).
+- ResearchGate returned a 403, so no hosted copy was found there.
+- No self-archived preprint (arXiv, institutional repository, etc.) was found via Unpaywall or Semantic Scholar.
+------------------------------------------------------------
+[2026-04-01T14:51:31.234025] STEP 4 - Summary
+## Title
+Graph Neural Network enhanced Finite Element modelling
+
+## Authors
+- Rutwik Gulakala
+- Bernd Markert
+- Marcus Stoffel
+
+*Institute of General Mechanics (IAM), RWTH Aachen University, Aachen, Germany*
+
+## Abstract
+A Graph Network-enhanced Finite Element (GNN-FE) approach is proposed to accelerate FE simulations. The method uses discretized geometry from an FE pre-processor as a graph input and employs a GNN with learned message-passing to solve boundary value problems, predicting von-Mises stress distributions at each node — without relying on image-based inputs/outputs as done in prior literature.
+
+## Keywords
+- Graph Neural Networks (GNN)
+- Finite Element Method (FEM)
+- Message-passing
+- Von-Mises stress
+- Surrogate modelling
+- Elastoplasticity
+
+## Research Problem
+- FE simulations are computationally expensive, especially for complex boundary value problems (e.g., crash simulations).
+- Existing ML surrogates (CNNs) are limited to structured rectangular domains and use images as I/O, making them unsuitable for unstructured FE meshes.
+- A gap exists for a method that directly interfaces with FE pre/post-processors using native mesh data.
+
+## Methodology
+- **Domain:** Rectangular aluminium plates with holes at various locations/sizes; elastoplastic material modelled using the isotropic Johnson-Cook constitutive model.
+- **Data generation:** ABAQUS FE solver; Python scripting for automation; ODB2VTK for format conversion; 540 total samples (500 training, 40 test).
+- **Graph construction:** Undirected, homogeneous, static graph; FE nodes → graph nodes; FE elements → graph edges.
+- **Network architecture:** Encoder-Decoder with:
+  - Transformer convolution layers as aggregation function
+  - MLP as message-passing function
+  - Material data concatenated to latent vector via FFNN
+- **Training:** Adam optimizer, MSE loss, learning rate 3E-3 with exponential decay from epoch 200; 1000 epochs total.
+- **Hyperparameter tuning:** Hyperband search algorithm; selected: 3 transformer conv. layers, 16 latent units, 5 MLP decoder layers.
+
+## Key Findings
+- Test MSE of **5.89E-2** across the full test batch.
+- Stress prediction error ranges from ~1.7E9–2.9E10 GPa depending on geometry/loading case.
+- GNN results show excellent visual and quantitative correlation with ABAQUS FE results.
+- **12.7% computational gain** achieved over standard FE simulation (inclusive of training cost).
+- Good extrapolation performance on cases outside the training distribution, with slightly higher error at stress concentration regions (e.g., hole boundaries).
+
+## Contributions
+- First approach to directly use FE pre-processor mesh data (nodal coordinates, boundary conditions, edge connectivity) as GNN input — bypassing image-based I/O.
+- Output is embedded back into VTK format, enabling direct visualization in FE post-processors.
+- Incorporation of mechanics knowledge (material parameters, BCs) into the network improves generalization across varied loading and boundary conditions.
+
+## Limitations
+- Moderate computational speedup (12.7%); benefit may be limited for small datasets.
+- Higher prediction error observed near stress concentrations (hole boundaries), where gradients are steep.
+- Only 2D rectangular plates with holes considered; generalization to complex 3D geometries is not demonstrated.
+- Single material (aluminium with Johnson-Cook model); multi-material or highly nonlinear cases are not evaluated.
+- Static, undirected graph only; dynamic or directed graph formulations are not explored.
+
+## Conclusion
+The proposed GNN-FE framework demonstrates that graph neural networks can effectively replicate FE stress predictions on unstructured meshes using native mesh data, offering a computationally faster and physically informed alternative to conventional FE solvers. While current gains are modest, the approach establishes a viable path for mesh-native, physics-aware surrogate modelling that integrates directly with standard FE workflows.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:51:31.235552
+DOI: DiffTaichi: Differentiable Programming for Physical Simulation
+============================================================
+[2026-04-01T14:52:56.397672] STEP 4 - Summary
+## Title
+**DiffTaichi: Differentiable Programming for Physical Simulation**
+
+---
+
+## Authors
+Yuanming Hu, Luke Anderson (MIT CSAIL), Tzu-Mao Li, Jonathan Ragan-Kelley (UC Berkeley), Qi Sun, Nathan Carr (Adobe Research), Frédéric Durand (MIT CSAIL)
+
+---
+
+## Abstract
+DiffTaichi is a differentiable programming language designed for high-performance physical simulation. Built on the Taichi imperative language, it uses source code transformations to generate gradients while preserving arithmetic intensity and parallelism. A lightweight tape records the simulation structure for end-to-end backpropagation. The system is demonstrated across 10 physical simulators, achieving up to 4.2× code reduction vs. hand-written CUDA at equivalent speed, and 188× speedup over TensorFlow.
+
+---
+
+## Keywords
+- Differentiable programming
+- Physical simulation
+- Automatic differentiation
+- Source code transformation
+- Neural network controllers
+- GPU computing
+
+---
+
+## Research Problem
+- Existing differentiable programming tools (TensorFlow, PyTorch) are ill-suited for physical simulation due to:
+  - Low arithmetic intensity from fine-grained linear algebra operators
+  - Lack of support for imperative, parallel control flows
+  - Inability to express flexible, non-element-wise indexing patterns (e.g., stencils, particle-grid interactions)
+- Hand-engineering differentiable simulators in CUDA is verbose and error-prone
+- No existing tool provides both high performance and developer productivity for differentiable simulation
+
+---
+
+## Methodology
+- **Two-scale Automatic Differentiation (AD) system:**
+  - *Local AD (intra-kernel):* Source Code Transformation (SCT) — differentiates individual kernels with high arithmetic intensity preserved
+  - *Global AD (inter-kernel):* Lightweight tape — records kernel function pointers and arguments; replays gradient kernels in reverse order during backpropagation
+- **Global Data Access Rules** enforce well-defined AD semantics in imperative programs:
+  1. Multiple writes to a tensor element must use atomic adds after the first write
+  2. No reads may occur on an element until its accumulation is complete
+- **IR preprocessing** before SCT: branch flattening and SSA (Static Single Assignment) conversion
+- **Megakernel approach:** multiple computation stages fused into single kernels for efficient differentiation
+- **Frontend:** embedded in Python via AST transformation; compiled, statically typed, and parallel at runtime
+- Demonstrated on 10 simulators covering rigid bodies, deformable objects, and fluids
+
+---
+
+## Key Findings
+- A differentiable elastic object simulator in DiffTaichi is:
+  - **4.2× shorter** than a hand-written CUDA equivalent
+  - **Equivalent in runtime performance** to the CUDA version
+  - **188× faster** than a TensorFlow implementation
+- Neural network controllers optimized using DiffTaichi typically converge within **tens of iterations**
+- Controller optimization with differentiable simulators converges **1–4 orders of magnitude faster** than model-free RL algorithms
+- The two-scale AD design avoids the trade-off between performance (SCT) and flexibility (tracing) by applying each at the appropriate level
+
+---
+
+## Contributions
+- A new **differentiable programming language** tailored to physical simulation requirements
+- A **two-scale AD system** combining SCT (local) and tape-based tracing (global)
+- Support for **megakernels**, **imperative parallel programming**, and **flexible arbitrary indexing**
+- Open-source implementation of **10 differentiable physical simulators**
+- Empirical demonstration of productivity and performance advantages over CUDA and deep learning frameworks
+
+---
+
+## Limitations
+- **Global Data Access Rules** require programmers to restructure code (e.g., storing full simulation history rather than only the latest state), increasing memory consumption
+- Memory overhead from storing full trajectory history can be significant — partially mitigated via checkpointing (discussed in Appendix D)
+- The language is embedded in Python but operates differently from Python (compiled, statically typed), which may introduce a learning curve
+- SCT-based differentiation of entire simulators can result in long compilation times if applied naively at global scale (motivation for the two-scale design)
+
+---
+
+## Conclusion
+DiffTaichi demonstrates that a purpose-built differentiable programming language significantly outperforms general-purpose ML frameworks for physical simulation tasks, both in developer productivity and runtime efficiency. Its two-scale AD system elegantly balances performance and flexibility, making it practical to build and optimize complex differentiable simulators with neural network controllers. The work highlights that domain-specific language design is a viable and effective strategy for bridging the gap between machine learning and high-performance simulation.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:52:56.399414
+DOI: 10.1093/jcde/qwad025
+============================================================
+[2026-04-01T14:53:44.533117] STEP 1 - PDF search
+**Paper Title:** An finite element analysis surrogate model with boundary oriented graph embedding approach for rapid design
+
+*Journal of Computational Design and Engineering, Vol. 10, No. 3, June 2023, pp. 1026–1046*
+*Authors: Xingyu Fu, Fengfeng Zhou, Dheeraj Peddireddy, Zhengyang Kang, Martin Byung-Guk Jun, Vaneet Aggarwal*
+
+---
+
+**Direct PDF URLs found:**
+
+PDF_URL: https://academic.oup.com/jcde/advance-article-pdf/doi/10.1093/jcde/qwad025/49633272/qwad025.pdf
+
+This is a Gold open access article (CC-BY license), so the publisher PDF is freely available. Unpaywall returned an error and ResearchGate blocked access, so no additional URLs were found from those sources.
+------------------------------------------------------------
+[2026-04-01T14:55:36.128912] STEP 4 - Summary
+## Title
+An FEA Surrogate Model with Boundary Oriented Graph Embedding Approach for Rapid Design
+
+## Authors
+- Xingyu Fu, Fengfeng Zhou — School of Mechanical Engineering, Purdue University
+- Dheeraj Peddireddy, Vaneet Aggarwal — School of Industrial Engineering, Purdue University
+- Zhengyang Kang — School of Mechanical and Power Engineering, Nanjing Tech University
+- Martin Byung-Guk Jun *(corresponding)* — Purdue University & Indiana Manufacturing Competitiveness Center (IN-MaC)
+
+## Abstract
+The paper proposes a **Boundary Oriented Graph Embedding (BOGE)** approach for Graph Neural Networks (GNNs) to serve as a general surrogate model for FEA. BOGE provides shortcuts for both boundary and local neighbor elements, enabling efficient regression on large-scale triangular-mesh-based FEA results. Applied to a cantilever beam problem, it predicts stress fields and topological optimization results with high accuracy.
+
+## Keywords
+- Machine learning
+- Graph neural network
+- Stress field
+- Solid mechanics
+- Topology optimization
+
+## Research Problem
+- FEA is computationally expensive, creating bottlenecks for time-sensitive applications (inverse modeling, agile manufacturing, generative design)
+- CNN-based surrogates require fixed-size input tensors and Euclidean grids, incompatible with structured (triangular) meshes
+- Standard GNNs suffer from **over-smoothing** when stacked deeply enough for long-range boundary information propagation
+- No general, ready-to-use ML approach existed for structured-mesh boundary value problems requiring long-range graph-vertex interactions
+
+## Methodology
+- **Graph embedding:** FEA mesh nodes mapped to graph vertices; edges encode neighbor connectivity and boundary shortcuts
+- **BOGE shortcuts:** Direct edges added from boundary elements (force/fixture) to all other elements, reducing effective propagation distance
+- **Backbone model:** 3-layer Deep Graph Convolutional Network (DeepGCN) using the MPNN framework
+- **Tasks:**
+  - Von Mises stress field regression on a 2D cantilever beam (A36 steel, triangular mesh ~1.0 mm global size, simulated in ABAQUS)
+  - Topological optimization result regression
+- **Inputs:** Node coordinates, material properties, boundary condition flags
+- **Training data:** FEA simulation results with varying geometry (elliptical hole position/size) and load conditions
+
+## Key Findings
+- Stress field prediction: **MSE = 0.011706 (MAPE = 2.41%)**
+- Topology optimization prediction: **MSE = 0.002735** (only 1.58% of elements with error > 0.01)
+- BOGE shortcuts effectively eliminate the over-smoothing problem by reducing required GNN depth
+- 3-layer DeepGCN with BOGE matches or outperforms deeper networks without boundary shortcuts
+- The model generalizes across varying geometry and boundary conditions without retraining per case
+
+## Contributions
+- Novel **BOGE graph embedding scheme** that encodes boundary conditions as direct long-range graph shortcuts
+- Demonstrated that a shallow GNN (3 layers) with BOGE achieves accuracy comparable to impractically deep networks
+- First approach to handle **static boundary value problems** on large-scale triangular meshes in a single inference pass
+- Extended applicability beyond physical field regression to **abstract design tasks** (topology optimization)
+- Provides a generalizable framework applicable to other FEA domains beyond solid mechanics
+
+## Limitations
+- Evaluated only on a **2D cantilever beam** problem; generalization to 3D or complex geometries not demonstrated
+- Dataset scope is limited (single material, single load type, geometric variation only via hole shape/position)
+- BOGE shortcut construction assumes identifiable boundary elements, which may be non-trivial for complex multi-boundary problems
+- Accuracy trade-off vs. full FEA remains; MAPE ~2.41% may be insufficient for safety-critical applications
+- Scalability to very large 3D meshes not assessed
+
+## Conclusion
+The BOGE approach addresses the core limitation of GNN-based FEA surrogates — the inability to propagate boundary condition information over long graph distances without over-smoothing. By embedding boundary shortcuts directly into the graph structure, BOGE enables a shallow, efficient DeepGCN to regress both stress fields and topology optimization outputs with high accuracy on structured triangular meshes. This work lays groundwork for a general deep-learning FEA simulator applicable to industrial design workflows.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T14:55:36.130770
+DOI: 10.3390/s21186046
+============================================================
+[2026-04-01T14:56:24.674984] STEP 1 - PDF search
+Here are the results:
+
+---
+
+**Paper Title:**
+Synthetic Image Generation Using the Finite Element Method and Blender Graphics Program for Modeling of Vision-Based Measurement Systems
+
+**Published in:** *Sensors* (MDPI), Vol. 21, Issue 18, Article 6046 (2021)
+
+---
+
+**Freely Available PDF URLs:**
+
+PDF_URL: https://www.mdpi.com/1424-8220/21/18/6046/pdf?version=1631260135
+
+---
+
+**Notes:**
+- The paper is **Gold Open Access** (CC BY license), so the publisher page (MDPI) is the authoritative free source.
+- Unpaywall and Semantic Scholar both resolve to the same MDPI-hosted PDF.
+- ResearchGate's page was inaccessible (403 blocked), but since it's Gold OA, the MDPI link is the canonical free PDF.
+- No additional mirror URLs were found beyond the MDPI publisher PDF.
+------------------------------------------------------------
+
+============================================================
+SESSION START  2026-04-01T15:04:35.019111
+DOI: 10.1007/978-1-4612-3172-1
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:00.326041
+DOI: Advanced Data Science and Physics-Based Modeling for Dynamic Systems
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:08.630352
+DOI: A reconstruction error-based framework for label noise detection
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:14.728556
+DOI: Using multi-inception CNN for face emotion recognition
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:21.326471
+DOI: Deep learning for user interest and response prediction in online display advertising
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:27.736228
+DOI: A survey on deep learning for data-driven soft sensors
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:33.899091
+DOI: Hybrid machine learning techniques and computational mechanics: Estimating the dynamic behavior of oxide precipitation hardened steel
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:41.171450
+DOI: Leveraging machine-learning for D2D communications in 5G/beyond 5G networks
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:46.963972
+DOI: Data-driven solution for optimal pumping units scheduling of smart water conservancy
+============================================================
+
+============================================================
+SESSION START  2026-04-01T15:05:54.775845
+DOI: Smart finite elements: A novel machine learning application
+============================================================

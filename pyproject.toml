@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reportea"
-version = "0.1.0"
-description = "An automated, LLM-powered research pipeline that discovers papers, summarises them, and delivers a daily tech digest to your phone."
+version = "0.3.0"
+description = "An automated, LLM-powered research pipeline that discovers papers, summarises them, and delivers a daily tech digest to your phone. Supports DOI-list seeding, token-limit protection with Bark alerts, and multi-stage PDF search."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

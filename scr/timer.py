@@ -12,14 +12,14 @@ Schedule:
            ├── Compare CSV against library → top-10 related papers
            └── Delete keywords_list.csv
 
-         Loop  (repeats until 04:00)
+         Loop  (repeats until 03:00)
            ├── Process related papers (doi-first, title-fallback per paper)
            ├── Generate unified keywords_list.csv from pdf_cache/ citations
            ├── Compare CSV against library → next top-10 papers
            ├── Clear pdf_cache/
            └── Delete keywords_list.csv
 
-  04:00  Generate daily digest via summarizer
+  03:00  Generate daily digest via summarizer
 """
 
 import argparse
@@ -46,6 +46,7 @@ from calling_llm_reader import (
     log_session_start,
     process_local_pdf,
 )
+from token_guard import TokenLimitError
 from summarizer import generate_daily_report
 
 ROOT            = Path(__file__).parent.parent
@@ -84,6 +85,29 @@ def delete_csv():
     if CSV_PATH.exists():
         CSV_PATH.unlink()
         print(f"[timer] Deleted {CSV_PATH.name}")
+
+# ── Load DOI list from base_papers/base_papers.txt ───────────────────────────
+
+DOI_LIST_PATH = BASE_PAPERS_DIR / "base_papers.txt"
+
+def load_doi_list() -> list[tuple[str, str]] | None:
+    """
+    Read base_papers/base_papers.txt if it exists.
+    Each non-blank, non-comment line is treated as a DOI.
+    Returns a list of (doi, "") pairs, or None if the file doesn't exist.
+    """
+    if not DOI_LIST_PATH.exists():
+        return None
+    dois = []
+    for line in DOI_LIST_PATH.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            dois.append(line)
+    if not dois:
+        print(f"[timer] {DOI_LIST_PATH.name} exists but contains no DOIs — falling back to PDF scan.")
+        return None
+    print(f"[timer] Loaded {len(dois)} DOI(s) from {DOI_LIST_PATH.name}")
+    return [(doi, "") for doi in dois]
 
 # ── Pair DOI + title per base paper ──────────────────────────────────────────
 
@@ -176,7 +200,12 @@ def run(deadline: datetime):
 
     # ── Initialization: process base papers ──────────────────────────────────
     print("\n[timer] Init — processing base papers ...")
-    base_items = get_base_paper_items()
+    base_items = load_doi_list()
+    if base_items is not None:
+        print(f"[timer] Using base_papers.txt DOI list ({len(base_items)} DOI(s)) — skipping PDF scan.")
+    else:
+        print("[timer] No base_papers.txt found — scanning PDFs in base_papers/.")
+        base_items = get_base_paper_items()
     process_items(base_items, deadline)
     clear_pdf_cache()
 
@@ -188,17 +217,20 @@ def run(deadline: datetime):
 
     # ── Loop: discover → process → discover ... ───────────────────────────────
     iteration = 1
-    while is_within_window(deadline) and related_items:
-        print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_items)} paper(s)")
-        process_items(related_items, deadline)
-        generate_citations_csv(CACHE_DIR, CSV_PATH)
-        results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
-        related_items = [(doi, title) for doi, title, _, _ in results]
-        clear_pdf_cache()
-        delete_csv()
-        iteration += 1
+    try:
+        while is_within_window(deadline) and related_items:
+            print(f"\n[timer] Loop iteration {iteration} ({now().strftime('%H:%M')}) — {len(related_items)} paper(s)")
+            process_items(related_items, deadline)
+            generate_citations_csv(CACHE_DIR, CSV_PATH)
+            results = compare_csv_with_library(CSV_PATH, all_kws, top_n=TOP_N)
+            related_items = [(doi, title) for doi, title, _, _ in results]
+            clear_pdf_cache()
+            delete_csv()
+            iteration += 1
+    except TokenLimitError as e:
+        print(f"\n[timer] Token limit reached — stopping pipeline early. ({e})")
 
-    # ── Generate daily report ────────────────────────────────────────────────
+    # ── Generate daily report (always, even after early stop) ────────────────
     print(f"\n[timer] Window closed at {now().strftime('%H:%M')}. Generating daily report ...")
     generate_daily_report()
     print("\n[timer] All done.")
@@ -245,7 +277,7 @@ def main():
             run(deadline)
         else:
             wait_until_start()
-            deadline = now().replace(hour=4, minute=0, second=0, microsecond=0)
+            deadline = now().replace(hour=3, minute=0, second=0, microsecond=0)
             run(deadline)
     except KeyboardInterrupt:
         print("\n[timer] Interrupted by user.")

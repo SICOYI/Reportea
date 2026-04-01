@@ -16,6 +16,8 @@ try:
 except ImportError:
     _EMAIL_AVAILABLE = False
 
+from token_guard import check_for_limit, TokenLimitError
+
 CLAUDE_BIN = "/Users/mac/.vscode/extensions/anthropic.claude-code-2.1.87-darwin-x64/resources/native-binary/claude"
 
 ROOT       = Path(__file__).parent.parent
@@ -26,7 +28,9 @@ def call_claude(prompt: str) -> str:
         [CLAUDE_BIN, "-p", prompt],
         capture_output=True, text=True
     )
-    return result.stdout.strip()
+    response = result.stdout.strip()
+    check_for_limit(response)
+    return response
 
 def generate_daily_report() -> Path | None:
     md_files = sorted(
@@ -60,20 +64,32 @@ def generate_daily_report() -> Path | None:
         "written in an engaging journalistic tone]\n\n"
         "## 📌 Key Stories\n"
         "[For each major finding or contribution, write a short news-style paragraph "
-        "with a bold headline, like a newspaper article stub. 3–5 items max.]\n\n"
+        "with a bold headline, like a newspaper article stub. 3–5 items max. "
+        "Each item MUST include the paper title in italics, e.g. *Paper Title Here*.]\n\n"
         "## 💡 What This Means\n"
         "[2–3 sentences on real-world impact or why these findings matter to the broader field]\n\n"
         "## 🔭 On the Horizon\n"
         "[1–2 sentences on open questions or what researchers should watch next]\n\n"
         "---\n"
-        "Do NOT list papers by title. Synthesize across them like a journalist, not a librarian.\n\n"
+        "IMPORTANT: Every Key Story item must cite the paper title in italics. "
+        "Synthesize like a journalist but always attribute findings to their source paper.\n\n"
         f"Paper summaries:\n{combined}"
     )
 
-    report = call_claude(prompt)
-
     today = datetime.now().strftime("%Y-%m-%d")
     out_path = OUTPUT_DIR / f"{today}report.md"
+
+    try:
+        report = call_claude(prompt)
+    except TokenLimitError:
+        print("[summarizer] Token limit hit during report generation — sending raw summaries to Bark.")
+        if _EMAIL_AVAILABLE:
+            send_report(
+                f"Reportea Partial Summaries — {today_display}",
+                f"# Token limit reached — raw summaries below\n\n{combined}",
+            )
+        return None
+
     out_path.write_text(report, encoding="utf-8")
     print(f"    Report saved to: {out_path}")
 

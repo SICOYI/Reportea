@@ -4,6 +4,8 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from token_guard import check_for_limit, TokenLimitError  # noqa: F401 (re-exported)
+
 # ls ~/.vscode/extensions/ | grep anthropic  →  update version below if binary not found
 CLAUDE_BIN = "/Users/mac/.vscode/extensions/anthropic.claude-code-2.1.87-darwin-x64/resources/native-binary/claude"
 
@@ -21,7 +23,9 @@ def call_claude(prompt: str, allow_web: bool = True) -> str:
     if allow_web:
         args += ["--allowedTools", "WebFetch,WebSearch"]
     result = subprocess.run(args, capture_output=True, text=True)
-    return result.stdout.strip()
+    response = result.stdout.strip()
+    check_for_limit(response)
+    return response
 
 def log_session_start(doi: str):
     with open(LOG_FILE, "a") as f:

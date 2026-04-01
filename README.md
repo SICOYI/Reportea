@@ -25,15 +25,18 @@ python scr/timer.py
         │     → compare_csv_with_library → top-10 related DOIs
         │     → delete keywords_list.csv
         │
-        └── Loop  [repeats until 04:00]
+        └── Loop  [repeats until 03:00]
               process_dois → summaries/*.md
               CitationExtractor (pdf_cache/) → citation DOIs
               → keywords_list.csv → compare → next top-10 DOIs
               → clear pdf_cache/ + delete keywords_list.csv
               repeat ──────────────────────────────────────────┘
         │
-04:00   └── summarizer.py → summaries/{YYYY-MM-DD}report.md
+03:00   └── summarizer.py → summaries/{YYYY-MM-DD}report.md
+                          → Bark push to iPhone
 ```
+
+If the Claude API usage limit is hit at any point, the pipeline stops immediately, pushes all summaries collected so far to Bark individually, and exits cleanly.
 
 ---
 
@@ -41,12 +44,14 @@ python scr/timer.py
 
 | File | Role |
 |---|---|
-| `scr/timer.py` | Orchestrator — waits for 01:00, runs init + loop, calls summarizer at 04:00 |
-| `scr/extractor.py` | Three extraction classes: `DOIExtractor`, `KeywordExtractor`, `CitationExtractor` |
+| `scr/timer.py` | Orchestrator — waits for 01:00, runs init + loop until 03:00, calls summarizer |
+| `scr/extractor.py` | Four extraction classes: `DOIExtractor`, `KeywordExtractor`, `CitationExtractor`, `TitleExtractor` |
 | `scr/key_words_lib.py` | Builds keyword library; generates `keywords_list.csv`; compares against library to rank DOIs |
 | `scr/calling_llm_reader.py` | DOI → PDF search → download → text extraction → Claude summary → `.md`; also accepts a local PDF path directly via `process_local_pdf()` |
-| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest; pushes it to your iPhone via Bark |
-| `scr/email_sender.py` | Bark push notification client — sends the daily report to your iPhone |
+| `scr/browser.py` | Title-based PDF finder — three-stage search: Claude (Google Scholar + arXiv + S2 + ResearchGate), Claude short fallback (arXiv + S2 only) |
+| `scr/summarizer.py` | Reads all summary `.md` files, generates a newspaper-style daily tech digest with paper titles cited; pushes it to iPhone via Bark |
+| `scr/email_sender.py` | Bark push notification client — sends reports and alerts to your iPhone |
+| `scr/token_guard.py` | Claude usage-limit detector — monitors every Claude response, alerts via Bark, and pushes all collected summaries if the limit is hit |
 
 ---
 
@@ -57,6 +62,17 @@ python scr/timer.py
 | `DOIExtractor` | Scans `base_papers/*.pdf`, extracts each paper's own DOI from the first 3000 chars |
 | `KeywordExtractor` | Calls Claude (no web) on the full paper text; returns normalized keyword set |
 | `CitationExtractor` | Extracts cited DOIs from the references section, validates each via `doi.org`, caches to `doi_cache/` |
+| `TitleExtractor` | Extracts the paper's own title and cited paper titles from the references section via Claude |
+
+---
+
+## Token Limit Protection
+
+Reportea monitors every Claude API response for usage-limit messages. When triggered:
+
+1. **Immediate Bark alert** — "Token limit hit — pipeline stopped early"
+2. **All summaries pushed to Bark** — each `.md` in `summaries/` is sent as a separate message
+3. **Clean exit** — no garbled or truncated reports reach your phone
 
 ---
 
@@ -68,7 +84,7 @@ python scr/timer.py
 python scr/timer.py
 ```
 
-Waits until 01:00 AM, then runs until 04:00 AM and generates the daily digest.
+Waits until 01:00 AM, then runs until 03:00 AM and generates the daily digest.
 
 ### Immediate mode
 
@@ -112,14 +128,25 @@ pip install reportea
 
 ## Setup
 
-1. **Add your seed papers** — place PDF files into `base_papers/`. The pipeline extracts their DOIs and keywords to build the library, and uses their citation lists as the starting point for discovery.
+1. **Add your seed papers** — two options (the DOI list takes priority if both are present):
+
+   - **DOI list (recommended):** create `base_papers/base_papers.txt` with one DOI per line. Blank lines and lines starting with `#` are ignored. The pipeline fetches and processes each paper directly without scanning any PDFs.
+
+     ```
+     # base_papers/base_papers.txt
+     10.1145/3727874
+     10.1109/IPDPSW63119.2024.00101
+     # 10.1007/978-1-4612-3172-1   ← commented out
+     ```
+
+   - **PDF files:** place PDF files into `base_papers/`. The pipeline extracts DOIs and titles from each PDF automatically. Used only when `base_papers.txt` is absent or empty.
 
 2. **Install dependencies:**
    ```bash
    pip install requests pdfplumber
    ```
 
-3. **iPhone notifications (optional)** — install [Bark](https://apps.apple.com/app/bark-customed-notifications/id1403753865) from the App Store. Open it to get your device key, then set `BARK_KEY` in `scr/email_sender.py`. The daily report will be pushed automatically after each run and saved in Bark's history.
+3. **iPhone notifications (optional)** — install [Bark](https://apps.apple.com/app/bark-customed-notifications/id1403753865) from the App Store. Open it to get your device key, then set `BARK_KEY` in `scr/email_sender.py`. The daily report and any token-limit alerts will be pushed automatically.
 
 4. **Claude binary** — requires the Claude Code VS Code extension. If you see `FileNotFoundError`:
    ```bash
@@ -134,7 +161,7 @@ pip install reportea
 | Path | Content |
 |---|---|
 | `summaries/{safe_doi}_summary.md` | Structured research summary per paper (Title, Authors, Abstract, Keywords, Methodology, Findings, etc.) |
-| `summaries/{YYYY-MM-DD}report.md` | Daily tech digest in newspaper format (≤1500 words) |
+| `summaries/{YYYY-MM-DD}report.md` | Daily tech digest in newspaper format (≤1500 words), with paper titles cited in each story |
 | `doi_cache/*_cited_dois.json` | Validated citation DOIs per PDF — persists across runs to avoid re-validating |
 | `keywords_list.csv` | Transient — written and deleted each cycle; `keywords (pipe-sep), doi` |
 | `claude_responses.log` | Append-only log of every Claude interaction, separated by session |
@@ -143,10 +170,10 @@ pip install reportea
 
 ```
 📰 Tech & Research Daily
-### March 29, 2026
+### April 1, 2026
 
 🔬 Today's Research Highlights
-📌 Key Stories
+📌 Key Stories          ← each story cites the paper title in italics
 💡 What This Means
 🔭 On the Horizon
 ```
@@ -167,17 +194,20 @@ pip install reportea
 
 ```
 Reportea/
-├── base_papers/              # Seed PDFs (input — add your papers here)
+├── base_papers/              # Seed papers (PDFs and/or base_papers.txt DOI list)
+│   └── base_papers.txt       # Optional — one DOI per line; takes priority over PDFs
 ├── pdf_cache/                # Downloaded PDFs (auto-cleared each cycle)
 ├── doi_cache/                # Validated citation DOIs per PDF (persistent cache)
 ├── summaries/                # Generated .md summaries + daily report
 ├── scr/
 │   ├── timer.py              # Orchestrator
-│   ├── extractor.py          # DOIExtractor, KeywordExtractor, CitationExtractor
+│   ├── extractor.py          # DOIExtractor, KeywordExtractor, CitationExtractor, TitleExtractor
 │   ├── key_words_lib.py      # Keyword library + CSV generation + comparison
 │   ├── calling_llm_reader.py # DOI → PDF → summary; or local PDF → summary
+│   ├── browser.py            # Title-based PDF finder (multi-stage search)
 │   ├── summarizer.py         # Daily tech digest generator
-│   └── email_sender.py       # Bark push notification client
+│   ├── email_sender.py       # Bark push notification client
+│   └── token_guard.py        # Claude usage-limit monitor + Bark alerter
 ├── keywords_list.csv         # Transient (created/deleted each cycle)
 └── claude_responses.log      # Full interaction log
 ```
